@@ -16,6 +16,8 @@ admin.initializeApp();
 // firestore.settings(settings);
 
 var db = admin.firestore();
+const settings = {timestampsInSnapshots: true};
+db.settings(settings);
 
 // *--- ADMIN FUNCTIONS ----*
 
@@ -958,6 +960,595 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 	})
 });
 
+exports.getCurrentUsersOffices = functions.https.onCall((data, context) => { 
+	const uid = context.auth.uid || null;
+	if (uid === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','Unable to find user uid. User must be signed in.');
+	}
+	return db.collection('users').doc(uid).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data(); 
+			return data.offices; 
+		} else { 
+			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
+		}
+	})
+	.then( userOffices => { 
+		if (userOffices === null) { 
+			return {};
+		}
+
+		const promises = userOffices.map( x => { 
+			return db.collection('offices').doc(x).get()
+			.then( docRef => { 
+				if (docRef.exists) { 
+					return docRef.data(); 
+				} else { 
+					throw new functions.https.HttpsError('not-found','Unable to find office.');
+				}
+			})
+			.catch(error => { 
+				throw new functions.https.HttpsError(error);
+			})
+		})
+
+		return Promise.all(promises)
+		.then( officeProfiles => { 
+			return officeProfiles;
+		})
+		.catch(error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	.catch( error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.createRegisteredGuest = functions.https.onCall((data, context) => { 
+	const hostUID = context.auth.uid || null; 
+	const guestName = data.guestName || null;
+	const guestEmail = data.guestEmail || null;
+	const expectedVisitDate = new Date(data.expectedVisitDate) || null;
+	const visitingOfficeUID = data.visitingOfficeUID || null;
+
+	if (hostUID === null || guestName === null || expectedVisitDate === null || visitingOfficeUID === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','User must be signed in. Must provide guestName, guestEmail, expectedVisitDate, and visitingOfficeUID.');
+	}
+
+	const companyPromise = db.collection('offices').doc(visitingOfficeUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data();
+			const companyUIDs = data.companyUID; 
+			return companyUIDs; 
+		} else { 
+			throw new functions.https.HttpsError('not-found','Unable to find office with visitingOfficeUID');
+		}
+	})
+
+	return Promise.all([companyPromise])
+	.then( companyUIDs => { 
+		var dict = {'hostUID':hostUID, 'guestName': guestName, 'guestEmail': guestEmail, 'expectedVisitDate': expectedVisitDate, 'visitingOfficeUID': visitingOfficeUID, 'visitingCompanyUID': companyUIDs,'arrived': false, 'canceled': false};
+
+		return db.collection('registeredGuests').add(dict)
+		.then( docRef => { 
+			const guestRegUID = docRef.id;
+			return db.collection('registeredGuests').doc(guestRegUID).update({"uid": guestRegUID})
+			.then( docRef => { 
+				return guestRegUID;
+			})
+		})
+		.then( guestRegUID => { 
+			const promises = [];
+			const userOperation = db.collection('users').doc(hostUID).update({'registeredGuests': admin.firestore.FieldValue.arrayUnion(guestRegUID)});
+			promises.push(userOperation);
+			companyUIDs.forEach( x => { 
+				const companyOperation = db.collection('companies').doc(x).update({'registeredGuests': admin.firestore.FieldValue.arrayUnion(guestRegUID)});
+				promises.push(companyOperation);
+			})
+			return Promise.all(promises);
+		})
+	})
+	.catch( error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.updateUserFCMRegToken = functions.https.onCall((data, context) => { 
+	const uid = context.auth.uid || null; 
+	const regToken = data.regToken || null;
+	const oldToken = data.oldToken || null;
+
+	if (uid === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','User must be signed in. Must provide guestName, guestEmail, expectedVisitDate, and visitingOfficeUID.');
+	}
+	
+	const promises = [];
+	if (regToken !== null) { 
+		const dbop1 =  db.collection('users').doc(uid).update({'registrationToken': admin.firestore.FieldValue.arrayUnion(regToken)})
+		.then(res => { 
+			console.log("Successfully added new registrationToken for user: ", uid);
+			return 
+		})
+		.catch( error => { 
+			console.error(error);
+			throw new functions.https.HttpsError(error);
+		})
+		promises.push(dbop1);
+	}
+	if ((oldToken !== null) && (oldToken !== regToken)) {
+		const dbop2 =  db.collection('users').doc(uid).update({'registrationToken': admin.firestore.FieldValue.arrayRemove(oldToken)})
+		.then(res => { 
+			console.log("Successfully removed old registrationToken for user: ", uid);
+			return 
+		})
+		.catch( error => { 
+			console.error(error);
+			throw new functions.https.HttpsError(error);
+		})
+		promises.push(dbop2);
+	}
+
+	return Promise.all(promises)
+	.catch( error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => { 
+	const newValue = change.after.data(); 
+	const oldValue = change.before.data();
+	const arrived = newValue.arrived || null; 
+	const hostUID = oldValue.hostUID || null;
+	const guestName = oldValue.guestName || null;
+
+	if (arrived === null || hostUID === null) { 
+		console.log("Need to provide a value for arrived and hostUID to trigger notification to host.");
+		return 
+	}
+
+	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) { 
+		return db.collection('users').doc(hostUID).get()
+		.then( docRef => { 
+			if (docRef.exists) { 
+				const data = docRef.data();
+				const registrationTokens = data.registrationToken || null; 
+
+				return registrationTokens.forEach( x => { 
+
+					var message = {
+						"token" : x,
+						"notification" : {
+						    "title" : 'Your guest has arrived.',
+						    "body" : 'Please meet '+ guestName +' by the reception area.'
+						 }
+					};
+
+					return admin.messaging().send(message)
+					  .then((response) => {
+					    // Response is a message ID string.
+					    console.log('Successfully sent message:', response);
+					    return 
+					  })
+					  .catch((error) => {
+					    console.error(error);
+					    throw new functions.https.HttpsError(error);
+					  });
+				});
+			} else { 
+				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
+			}
+		})
+		.catch(error => { 
+			console.error(error);
+			throw new functions.https.HttpsError(error);
+		})
+	} 
+	return 
+});
+
+exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => { 
+	const uid = context.auth.uid || null; 
+	if (uid === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','User must be signed in.');
+	}
+
+	const dict = {}; 
+	const promises = []
+	const upcoming = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',false).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => x.data());
+		const docs = docsData.map(x => { 
+			const officeUID = x.visitingOfficeUID || null; 
+			if (officeUID !== null) { 
+				return db.collection('offices').doc(officeUID).get() 
+				.then(docRef => { 
+					const data = docRef.data() || null; 
+					x.visitingOffice = data; 
+					return x
+				})
+				.catch( error => { 
+					throw new functions.https.HttpsError(error);
+				})
+			} else { 
+				return x
+			}
+		})
+
+		return Promise.all(docs)
+		.then( updatedDocs => { 
+			dict['upcoming'] = updatedDocs; 
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	const past = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',true).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => x.data());
+		const docs = docsData.map(x => { 
+			const officeUID = x.visitingOfficeUID || null; 
+			if (officeUID !== null) { 
+				return db.collection('offices').doc(officeUID).get() 
+				.then(docRef => { 
+					const data = docRef.data() || null; 
+					x.visitingOffice = data; 
+					return x
+				})
+			} else { 
+				return x
+			}
+		})
+		return Promise.all(docs)
+		.then( updatedDocs => { 
+			dict['past'] = updatedDocs; 
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	promises.push(upcoming);
+	promises.push(past);
+
+	return Promise.all(promises)
+	.then( res => { 
+		console.log('Successfully got all registered guests for user('+uid+') : '+dict);
+		return dict
+	})
+	.catch( error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.cancelRegisteredGuest = functions.https.onCall((data, context) => { 
+	const userUID = context.auth.uid || null; 
+	const registeredGuestUID = data.registeredGuestUID || null; 
+	if (userUID === null || registeredGuestUID === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','User must be signed in, and must provide registeredGuestUID.');
+	}
+
+	return db.collection('registeredGuests').doc(registeredGuestUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data() 
+			if (data.hostUID !== userUID) { 
+				throw new functions.https.HttpsError('permission-denied','User is not the host for this registered guest.');
+			}
+			return docRef
+		} else { 
+			throw new functions.https.HttpsError('not-found','registeredGuest not found: '+registeredGuestUID);
+		}
+	})
+	.then( docRef => { 
+		return db.collection('registeredGuests').doc(registeredGuestUID).update({'canceled':true})
+		.then( docRef => { 
+			console.log('Successfully canceled registeredGuests: '+registeredGuestUID);
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	.catch( error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.createServiceRequest = functions.https.onCall((data, context) => { 
+	const note = data.note || null;
+	const issueType = data.issueType || null;
+	const officeUID = data.officeUID || null;
+	const userUID = context.auth.uid || null;
+
+	if (officeUID === null || issueType === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID and issueType.');
+	} else if (userUID === null) { 
+		throw new functions.https.HttpsError('unauthenticated','User needs to be logged in');
+	}
+
+	// need to check if user has permission to submit service requests for this office 
+	// add serviceRequestUID to user's profile as well?
+
+	return db.collection('serviceRequests').add({
+		note: note, 
+		issueType: issueType, 
+		officeUID: officeUID, 
+		userUID: userUID, 
+		status: 'open', 
+		timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+		canceled: false
+	})
+	.then( docRef => { 
+		const uid = docRef.id;
+		return db.collection('serviceRequests').doc(uid).update({"uid": uid})
+		.then( docRef => { 
+			return { "id": uid }
+		})
+	})
+	.catch( error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
+
+});
+
+exports.getUsersServiceRequests = functions.https.onCall((data, context) => { 
+	const userUID = context.auth.uid || null;
+
+	if (userUID === null) { 
+		throw new functions.https.HttpsError('unauthenticated','User needs to be logged in.');
+	}
+	
+	var dict = {};
+	const open = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','open').where('canceled','==',false).orderBy('timestamp','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => { return x.data() });
+		const docs = docsData.map(x => { 
+			const officeUID = x.officeUID || null; 
+			if (officeUID !== null) { 
+				return db.collection('offices').doc(officeUID).get() 
+				.then(docRef => { 
+					const data = docRef.data() || null; 
+					x.office = data; 
+					return x
+				})
+				.catch( error => { 
+					throw new functions.https.HttpsError(error);
+				})
+			} else { 
+				return x
+			}
+		})
+
+		return Promise.all(docs)
+		.then( updatedDocs => { 
+			dict['open'] = updatedDocs; 
+			return
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	});
+
+	const pending = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','pending').where('canceled','==',false).orderBy('timestamp','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => { return x.data() });
+		const docs = docsData.map(x => { 
+			const officeUID = x.officeUID || null; 
+			if (officeUID !== null) { 
+				return db.collection('offices').doc(officeUID).get() 
+				.then(docRef => { 
+					const data = docRef.data() || null; 
+					x.office = data; 
+					return x
+				})
+				.catch( error => { 
+					throw new functions.https.HttpsError(error);
+				})
+			} else { 
+				return x
+			}
+		})
+
+		return Promise.all(docs)
+		.then( updatedDocs => { 
+			dict['pending'] = updatedDocs; 
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		}) 
+	});
+
+	const closed = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','closed').where('canceled','==',false).orderBy('timestamp','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => { return x.data() });
+		const docs = docsData.map(x => { 
+			const officeUID = x.officeUID || null; 
+			if (officeUID !== null) { 
+				return db.collection('offices').doc(officeUID).get() 
+				.then(docRef => { 
+					const data = docRef.data() || null; 
+					x.office = data; 
+					return x
+				})
+				.catch( error => { 
+					throw new functions.https.HttpsError(error);
+				})
+			} else { 
+				return x
+			}
+		})
+
+		return Promise.all(docs)
+		.then( updatedDocs => { 
+			dict['closed'] = updatedDocs; 
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	});
+
+	return Promise.all([open, pending, closed])
+	.then( res => { 
+		console.log(dict);
+		return dict
+	})
+	.catch( error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.cancelServiceRequest = functions.https.onCall((data, context) => { 
+	const serviceRequestID = data.serviceRequestID || null;
+	const userUID = context.auth.uid || null; 
+	// check permissions to see if user is allowed to cancel service request 
+
+	if (serviceRequestID === null || userUID === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','Must provide service request UID and user UID.');
+	}
+
+	return db.collection("serviceRequests").doc(serviceRequestID).update({'canceled':true})
+	.catch(error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+});
+
+exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => { 
+	const newValue = change.after.data(); 
+	const oldValue = change.before.data();
+	const hostUID = newValue.userUID || null;
+
+	if (newValue.status !== oldValue.status) {
+		if (hostUID === null) { 
+			return 
+		}
+		return db.collection('users').doc(hostUID).get()
+		.then( docRef => { 
+			if (docRef.exists) { 
+				const data = docRef.data();
+				const registrationTokens = data.registrationToken || null; 
+
+				return registrationTokens.forEach( x => { 
+					var notBody = ""
+					if (newValue.status === "open") { 
+						notBody = "We have received your request and will start working on it asap."
+					} else if (newValue.status === "pending")  {
+						notBody = "We have started working on your request."
+					} else if (newValue.status === "closed")  {
+						notBody = "We have finished working on your request."
+					}
+					var message = {
+						"token" : x,
+						"notification" : {
+						    "title" : 'Service Request Update',
+						    "body" : notBody, 
+						 }, 
+						 "data": { 
+ 							"type" : "serviceRequestUpdate",
+						    'requestUID': context.params.serviceRequestID
+						 }
+					};
+
+					return admin.messaging().send(message)
+					  .then((response) => {
+					    // Response is a message ID string.
+					    console.log('Successfully sent message:', response);
+					    return 
+					  })
+					  .catch((error) => {
+					    console.error(error);
+					    throw new functions.https.HttpsError(error);
+					  });
+				});
+			} else { 
+				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
+			}
+		})
+	}
+});
+
+
+
+// function getOfficeInfo(officeUID) { 
+// 	return db.collection('offices').doc(officeUID).get() 
+// 	.then( docRef => { 
+// 		if (docRef.exists) { 
+// 			const data = docRef.data() || null;
+// 			return data
+// 		} else { 
+// 			throw new functions.https.HttpsError('not-found','Unable to find office with officeUID: '+officeUID);
+// 		}
+// 	})
+// 	.then( data => { 
+// 		if (data === null) { 
+// 			throw new functions.https.HttpsError('not-found','Unable to find data for office with officeUID: '+officeUID);
+// 		}
+// 		const buildingUID = data.buildingUID || null;
+// 		const companyUID = data.companyUID || null;
+// 		const employees = data.employees || null;
+
+// 		// if (buildingUID !== null) {
+// 		// 	const buildingInfo = db.collection('buildings').doc(buildingUID).get()
+// 		// 	.then( docRef => { 
+
+// 		// 	})
+// 		// }
+// 	})
+// }
+
+// function getBuildingInfo(buildingUID, shouldGetLandlordData, shouldGetOfficeData) {
+// 	if (buildingUID === null) { 
+// 		throw new functions.https.HttpsError('invalid-arguments','Need to provide a buildingUID.');
+// 	}
+// 	var shouldGetLandlordData = typeof shouldGetLandlordData  !== 'undefined' ?  shouldGetLandlordData  : true;
+// 	var shouldGetOfficeData = typeof shouldGetOfficeData  !== 'undefined' ?  shouldGetOfficeData  : true;
+
+// 	return db.collection('buildings').doc(buildingUID).get()
+// 	.then( docRef => { 
+// 		if (docRef.exists) { 
+// 			const data = docRef.data() || null;
+// 			if (data === null) { 
+// 				throw new functions.https.HttpsError('not-found','Unable to find building data with buildingUID: '+buildingUID);
+// 			}
+// 			return data
+// 		} else { 
+// 			throw new functions.https.HttpsError('not-found','Unable to find building with buildingUID: '+buildingUID);
+// 		}
+// 	})
+// 	.then( data => {
+// 		if (data === null) { 
+// 			throw new functions.https.HttpsError('not-found','Unable to find building data with buildingUID: '+buildingUID);
+// 		}
+// 		const landlords = data.landlords || null;
+// 		if ((shouldGetLandlordData === false) || (landlords === null)) { 
+// 			return data 
+// 		} 
+// 		const promises = landlords.map( x => { 
+// 			return db.collection('users').docc(x).get()
+// 			.then( docRef => { 
+// 				if (docRef.exists) { 
+// 					return docRef.data() || null; 
+// 				} else { 
+// 					throw new functions.https.HttpsError('not-found','Unable to find landlord with userUID: '+x);
+// 				}
+// 			})
+// 		})
+// 	})
+// }
+
 // async function extractUserTypeFromUID(uid) { 
 // 	return new Promise((resolve, reject) => { 
 // 		if (uid === null)  { 
@@ -988,3 +1579,5 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 // 		})
 // 	});
 // }
+
+
