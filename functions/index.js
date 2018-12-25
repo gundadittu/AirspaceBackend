@@ -1864,7 +1864,7 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 	const description = data.description || "No event description provided";
 	const attendees = data.attendees || null;
 	const userUID = context.auth.uid || null;
-	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || null;
+	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
 
 
 	const currentDate = new Date(new Date - (5 * 60000));
@@ -1872,7 +1872,7 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 		throw new functions.https.HttpsError('invalid-arguments','Cannot make a reservation in the past');
 	}
 
-	if ((startTime === null) || (endTime === null) || (conferenceRoomName === null) || (officeAddress === null) || (conferenceRoomUID === null) || (shouldCreateCalendarEvent === null)) { 
+	if ((startTime === null) || (endTime === null) || (conferenceRoomName === null) || (officeAddress === null) || (conferenceRoomUID === null)) { 
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, conferenceRoomName, officeAddress, shouldCreateCalendarEvent, and conferenceRoomUID.');
 	}
 
