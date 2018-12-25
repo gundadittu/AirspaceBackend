@@ -159,7 +159,7 @@ exports.getAllUsers = functions.https.onCall((data, context) => {
 });
 
 exports.updateUserBioInfo = functions.https.onCall((data, context) => {
-	const authUserUID = context.auth.id || null
+	const authUserUID = context.auth.uid || null
 	const uid = data.uid || null;
 	const firstName = data.firstName || null;
 	const lastName = data.lastName || null;
@@ -2109,9 +2109,51 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 	}
 
 	return db.collection('conferenceRoomReservations').where('userUID','==',userUID).orderBy('startDate','desc').get()
-	.then( docSnapshots => { 
+	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
-		return docsData
+		var promises = docsData.map( x => { 
+
+			return db.collection('conferenceRooms').doc(x.roomUID).get()
+			.then( docRef => { 
+				if (docRef.exists) { 
+					x.conferenceRoom = docRef.data();
+					return x
+				}
+				return x
+			})
+			
+		});
+
+		return Promise.all(promises)
+		.then( reservations => { 
+			return reservations
+		})
+		.catch(error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	.then( updatedReservations => { 
+
+		var promises = updatedReservations.map( x => { 
+			const room = x.conferenceRoom;
+			const officeUIDs = room.officeUID;
+			return getExpandedOfficeData(officeUIDs)
+	  		.then( officeData => { 
+	  			x.conferenceRoom.offices = officeData; 
+	  			return x
+	  		})
+	  		.catch(error => { 
+				throw new functions.https.HttpsError(error);
+	  		})
+		})
+
+		return Promise.all(promises)
+		.then( finalReservations => { 
+			return finalReservations
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
 	})
 	.catch( error => { 
 		console.log(error);
