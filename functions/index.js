@@ -1709,29 +1709,6 @@ exports.findAvailableConferenceRooms = functions.https.onCall((data, context) =>
 			})
 		});
 
-				// var officePromises = officeUIDs.map( y => { 
-			// 	return db.collection('offices').doc(y).get() 
-			// 	.then( docRef => { 
-			// 		if (docRef.exists) { 
-			// 			return docRef.data();
-			// 		} else { 
-			// 			return {"officeUID": y};
-			// 		}
-			// 		// throw new functions('not-found','Office not found in database.');
-			// 	})
-			// 	.catch(error => { 
-			// 		throw new functions.https.HttpsError(error);
-			// 	})
-			// })
-			// return Promise.all(officePromises)
-			// .then( officeData => { 
-			// 	x.offices = officeData;
-			// 	return x
-			// })
-			// .catch(error => { 
-			// 	throw new functions.https.HttpsError(error);
-			// })
-
 		return Promise.all(promises)
 		.then( finalRoomData => { 
 			console.log(finalRoomData);
@@ -1765,7 +1742,32 @@ exports.getReservationsForConferenceRoom = functions.https.onCall((data, context
 			return !(exStartDate > givenEndDate); 
 		})
 	})
+	.then( docData => {  
+		return docData.map(x => { 
+			return {"uid": x.uid, "startDate": x.startDate, "endDate": x.endDate, "roomUID": x.roomUID}
+		})
+	})
 });
+
+function getUserData(userUIDs) { 
+	if ((userUIDs === null) || (userUIDs.length === 0)) { 
+		return
+	}
+	return userUIDs.map(x => { 
+		return db.collection('users').doc(x).get() 
+		.then( docRef => { 
+			if (docRef.exists) { 
+				return docRef.data() 
+			} else { 
+				return {'uid':x }
+			}
+		})
+	})
+	.catch( error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+}
 
 // add location to call
 // add proper timezone 
@@ -1815,8 +1817,22 @@ function getExpandedOfficeData(officeUIDs) {
 					} else { 
 						return {"officeUID": y};
 					}
-					// throw new functions('not-found','Office not found in database.');
 				})
+				// .then( officeData => { 
+				// 	const buildingUID = officeData.buildingUID || null;
+				// 	if (buildingUID === null) { 
+				// 		console.log('Could not find building for office.');
+				// 		return y
+				// 	}
+
+				// 	return db.collection('buildings').doc(buildingUID).get()
+				// 	.then(docRef => { 
+				// 		if (docRef.exists) { 
+				// 			y.building = docRef.data() 
+				// 		}
+				// 		return y
+				// 	})
+				// })
 				.catch(error => { 
 					throw new functions.https.HttpsError(error);
 				})
@@ -1858,62 +1874,111 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 	const startTime = new Date(data.startTime) || null;
 	const endTime = new Date(data.endTime) || null; 
 	const conferenceRoomUID = data.conferenceRoomUID || null;
-	const conferenceRoomName = data.conferenceRoomName || null; 
-	const officeAddress = data.officeAddress || null;
-	const eventName = data.eventName || "No event name provided";
-	const description = data.description || "No event description provided";
-	const attendees = data.attendees || null;
+	const reservationTitle = data.reservationTitle || "Room Reservation";
+	const note = data.note || null;
+	var attendees = data.attendees || [];
 	const userUID = context.auth.uid || null;
+	const userEmail = context.auth.token.email || null; 
 	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
 
-
+	
+	if ((startTime === null) || (endTime === null) || (conferenceRoomUID === null)) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, and conferenceRoomUID.');
+	}
 	const currentDate = new Date(new Date - (5 * 60000));
 	if ((startTime <= currentDate) || (endTime <= currentDate)) { 
 		throw new functions.https.HttpsError('invalid-arguments','Cannot make a reservation in the past');
 	}
 
-	if ((startTime === null) || (endTime === null) || (conferenceRoomName === null) || (officeAddress === null) || (conferenceRoomUID === null)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, conferenceRoomName, officeAddress, shouldCreateCalendarEvent, and conferenceRoomUID.');
-	}
-
 	if (userUID === null) { 
 		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
 	}
-
+		
 	// check to make sure user can book conference room??????  
+	return db.collection('users').doc(userUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data(); 
+			const offices = data.offices || null;
+			if (offices === null) { 
+				throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
+			}
+			return offices 
+		} else { 
+			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
+		}
+	})
+	.then(userOffices => { 
+		return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
+		.then( docRef => { 
+			if (docRef.exists) { 
+				const data = docRef.data();
 
-	// check that conference room is free at that time and reservable 
-	return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
-	.then( docSnapshots => { 
-		const docData = docSnapshots.docs.map( x => x.data());
-		var conflicts = docData.filter( x => { 
-			// check if startDate of existing res is less than endDate of new res
-			const exStartDate = x.startDate.toDate();
-			const check = (exStartDate < endTime); 
-			return check
-		});
+				const reserveable = data.reserveable;
+				const active = data.active;
+				if ((reserveable === false) || (active === false)) { 
+					throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
+				}
 
-		if (conflicts.length !== 0) { 
-			throw new functions.https.HttpsError('resource-exhausted','Reservations already exists in time frame for conference room.');
-		} 
-		return
+				const confRoomOfficeUIDs = data.officeUID || null;
+				if (confRoomOfficeUIDs === null) { 
+					throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
+				}
+
+				var unionFound = false;
+				userOffices.forEach( x => { 
+					if (confRoomOfficeUIDs.includes(x) === true) { 
+						unionFound = true ;
+					}
+				});
+
+				if (unionFound === false) { 
+					throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
+				} else { 
+					return 
+				}
+
+			} else { 
+				throw new functions.https.HttpsError('not-found','Unable to find conference room in database.');
+			}
+		})
+	})
+	.then( x => { 
+
+		// check that conference room is free at that time and reservable 
+		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
+		.then( docSnapshots => { 
+			const docData = docSnapshots.docs.map( x => x.data());
+			var conflicts = docData.filter( x => { 
+				// check if startDate of existing res is less than endDate of new res
+				const exStartDate = x.startDate.toDate();
+				const check = (exStartDate < endTime); 
+				return check
+			});
+
+			if (conflicts.length !== 0) { 
+				throw new functions.https.HttpsError('permission-denied','Reservations already exists in time frame for conference room.');
+			} 
+			return
+		})
 	})
 	.then( x => { 
 		// create conference room reservation 
 		return db.collection('conferenceRoomReservations').add({ 
-			title: eventName,
-			note: description, 
+			title: reservationTitle,
+			note: note, 
 			roomUID: conferenceRoomUID, 
 			startDate: startTime, 
 			endDate: endTime, 
-			userUID: userUID
+			userUID: userUID, 
+			attendees: attendees.map( x => x.uid )
 		})
 		.catch( error => { 
 			throw new functions.https.HttpsError(error); 
 		})
 	})
 	.then(docRef => { 
-			// if (docRef.exists) { 
+
 		const uid = docRef.id; 
 		if (uid === null) { 
 			throw new functions.https.HttpsError('internal', 'Unable to add new reservation to database.');
@@ -1921,28 +1986,50 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 
 		return db.collection('conferenceRoomReservations').doc(uid).update({"uid":uid})
 		.then(docRef => { 
-					return 
+			return 
 		})
 		.catch(error => { 
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.then( y => { 
+	.then( x => { 
 		if (shouldCreateCalendarEvent === false) { 
+			console.log("Not creating calendar event.");
 			return 
+		}
+
+		return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
+		.then( docRef => { 
+			if (docRef.exists) { 
+				const data = docRef.data(); 
+				const buildingUID = data.buildingUID || null; 
+				return buildingUID
+			}
+			return null
+		})
+	})
+	.then( address => { 
+
+		if (userEmail !== null) { 
+			attendees.push({"email": userEmail});
+		}
+
+		var location = ""
+		if (address !== null) { 
+			location = address; 
 		}
 
 		// create calendar invite 
 		const eventData = {
-	        eventName: eventName,
-	        description: description,
+	        eventName: reservationTitle	,
+	        description: note,
 	        startTime: startTime,
 	        endTime: endTime, 
 	        attendees: attendees,
-	        location: conferenceRoomName+", "+officeAddress
+	        location: location
     	};
     	const oAuth2Client = new OAuth2(
-	    	 googleCredentials.web.client_id,
+	    	googleCredentials.web.client_id,
 	        googleCredentials.web.client_secret,
 	        googleCredentials.web.redirect_uris[0]
     	);
@@ -2108,11 +2195,12 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 		throw new functions.https.HttpsError('unauthenticated','User must be logged in');
 	}
 
-	return db.collection('conferenceRoomReservations').where('userUID','==',userUID).orderBy('startDate','desc').get()
+	var dict = {};
+	const upcoming = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
 	.then( docSnapshots => {
+		
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		var promises = docsData.map( x => { 
-
 			return db.collection('conferenceRooms').doc(x.roomUID).get()
 			.then( docRef => { 
 				if (docRef.exists) { 
@@ -2126,15 +2214,45 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 
 		return Promise.all(promises)
 		.then( reservations => { 
-			return reservations
+			dict["upcoming"] = reservations;
+			return 
 		})
 		.catch(error => { 
 			throw new functions.https.HttpsError(error);
 		})
-	})
-	.then( updatedReservations => { 
 
-		var promises = updatedReservations.map( x => { 
+	});
+
+	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => x.data() );
+		var promises = docsData.map( x => { 
+
+			return db.collection('conferenceRooms').doc(x.roomUID).get()
+			.then( docRef => { 
+				if (docRef.exists) { 
+					x.conferenceRoom = docRef.data();
+				}
+				return x
+			})
+				
+		});
+
+		return Promise.all(promises)
+		.then( reservations => { 
+			dict["past"] = reservations;
+			return 
+		})
+		.catch(error => { 
+			throw new functions.https.HttpsError(error);
+		})
+
+	});
+
+	return Promise.all([upcoming, past])
+	.then( x => { 
+		const updatedUpcomingReservations = dict.upcoming;
+		var promises = updatedUpcomingReservations.map( x => { 
 			const room = x.conferenceRoom;
 			const officeUIDs = room.officeUID;
 			return getExpandedOfficeData(officeUIDs)
@@ -2148,12 +2266,126 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 		})
 
 		return Promise.all(promises)
-		.then( finalReservations => { 
-			return finalReservations
+		.then( finalUpcomingReservations => { 
+			dict["upcoming"] = finalUpcomingReservations;
+			return 
 		})
 		.catch( error => { 
 			throw new functions.https.HttpsError(error);
 		})
+
+	})
+	.then( x => { 
+		const updatedPastReservations = dict.past;
+		var promises = updatedPastReservations.map( x => { 
+			const room = x.conferenceRoom;
+			const officeUIDs = room.officeUID;
+			return getExpandedOfficeData(officeUIDs)
+	  		.then( officeData => { 
+	  			x.conferenceRoom.offices = officeData; 
+	  			return x
+	  		})
+	  		.catch(error => { 
+				throw new functions.https.HttpsError(error);
+	  		})
+		})
+
+		return Promise.all(promises)
+		.then( finalPastReservations => { 
+			dict["past"] = finalPastReservations;
+			return 
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+
+	})
+	.then( x => { 
+		const upcoming = dict.upcoming;  
+		var upcomingPromises = upcoming.map( x => { 
+			const userUID = x.userUID || null;
+			if (userUID === null) {
+				return x
+			}
+			return db.collection('users').doc(x.userUID).get()
+			.then(docRef => {
+				if (docRef.exists) { 
+					x.host = docRef.data(); 
+				}
+				return x
+			})
+		})
+
+		return Promise.all(upcomingPromises)
+		.then( upcomingData => { 
+			dict["upcoming"] = upcomingData; 
+			return 
+		})
+	})
+	.then(x => { 
+		const past = dict.past; 
+		var pastPromises = past.map( x => { 
+			const userUID = x.userUID || null;
+			if (userUID === null) {
+				return x
+			}
+			return db.collection('users').doc(x.userUID).get()
+			.then(docRef => {
+				if (docRef.exists) { 
+					x.host = docRef.data(); 
+				}
+				return x
+			})
+		})
+
+		return Promise.all(pastPromises)
+		.then( pastData => { 
+			dict["past"] = pastData; 
+			return 
+		})
+	})
+	.then( x => { 
+		const upcoming = dict.upcoming;  
+		var upcomingPromises = upcoming.map( x => { 
+			const attendees = x.attendees || null;
+			if ((attendees === null) || (attendees.length === 0)) {
+				return x
+			}
+			return getUserData(attendees)
+			.then( userData => { 
+				x.attendees = userDate
+				return x
+			})
+		})
+
+		return Promise.all(upcomingPromises)
+		.then( upcomingData => { 
+			dict["upcoming"] = upcomingData; 
+			return 
+		})
+	})
+	.then(x => { 
+		const past = dict.past;  
+		var pastPromises = past.map( x => { 
+			const attendees = x.attendees || null;
+			if ((attendees === null) || (attendees.length === 0)) {
+				return x
+			}
+			return getUserData(attendees)
+			.then( userData => { 
+				x.attendees = userDate
+				return x
+			})
+		})
+
+		return Promise.all(pastPromises)
+		.then( pastData => { 
+			dict["past"] = pastData; 
+			return 
+		})
+	})
+	.then( x => { 
+		return dict; 
 	})
 	.catch( error => { 
 		console.log(error);
@@ -2161,4 +2393,248 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 	})
 
 });
+
+exports.updateConferenceRoomReservation = functions.https.onCall((data, context) => { 
+	const reservationUID = data.reservationUID || null;
+	const userUID = context.auth.uid || null; /// check to see that user matches one on reservation? 
+	const startTime = new Date(data.startTime) || null;
+	const endTime = new Date(data.endTime) || null;
+	const title = data.reservationTitle || null; 
+	const note = data.note || null; 
+	const attendees = data.attendees || null;
+
+	const dict = {"startTime": startTime, "endTime": endTime, "title": title, "note": note, "attendees": attendees };
+
+	if ((startTime === null) || (endTime === null)) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime and endTime.');
+	}
+	const currentDate = new Date(new Date - (5 * 60000));
+	if ((startTime <= currentDate) || (endTime <= currentDate)) { 
+		throw new functions.https.HttpsError('invalid-arguments','Cannot make a reservation in the past');
+	}
+
+	if (userUID === null) { 
+		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
+	}
+		
+	// check to make sure user can book conference room??????  
+	return db.collection('users').doc(userUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data(); 
+			const offices = data.offices || null;
+			if (offices === null) { 
+				throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
+			}
+			return offices 
+		} else { 
+			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
+		}
+	})
+	.then(userOffices => { 
+
+		var promise = db.collection('conferenceRoomReservations').doc(reservationUID).get() 
+		.then( docRef => { 
+			if (docRef.exists) { 
+				const data = docRef.data() 
+				const conferenceRoomUID = data.roomUID || null;
+				if (conferenceRoomUID === null) { 
+					throw new functions.https.HttpsError('not-found','Unable to find conference room linked to reservation.');
+				}
+				return conferenceRoomUID
+			} else { 
+				throw new functions.https.HttpsError('not-found','Unable to find conference room reservation.');
+			}
+		})
+
+		return Promise.all([promise])
+		.then(conferenceRoomUID => {
+			console.log(conferenceRoomUID[0]);
+			const roomUID = conferenceRoomUID[0] || null;
+			if (roomUID === null) { 
+				throw new functions.https.HttpsError('not-found','Unable to find conference room linked to reservation.');
+			}
+
+			return db.collection('conferenceRooms').doc(roomUID).get()
+			.then( docRef => { 
+				if (docRef.exists) { 
+					const data = docRef.data();
+
+					const reserveable = data.reserveable;
+					const active = data.active;
+					if ((reserveable === false) || (active === false)) { 
+						throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
+					}
+
+					const confRoomOfficeUIDs = data.officeUID || null;
+					if (confRoomOfficeUIDs === null) { 
+						throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
+					}
+
+					var unionFound = false;
+					userOffices.forEach( x => { 
+						if (confRoomOfficeUIDs.includes(x) === true) { 
+							unionFound = true ;
+						}
+					});
+
+					if (unionFound === false) { 
+						throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
+					} else { 
+						return conferenceRoomUID
+					}
+
+				} else { 
+					throw new functions.https.HttpsError('not-found','Unable to find conference room in database.');
+				}
+			})
+		})
+	})
+	.then( conferenceRoomUID => { 
+		// below code checks that conference room is free at that time and reservable 
+		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
+		.then( docSnapshots => { 
+			const docData = docSnapshots.docs.map( x => x.data());
+			var conflicts = docData.filter( x => { 
+				// check if startDate of existing res is less than endDate of new res
+				const exStartDate = x.startDate.toDate();
+				const check = (exStartDate < endTime); 
+				return check
+			});
+
+			if (conflicts.length !== 0) { 
+				throw new functions.https.HttpsError('permission-denied','Reservations already exists in time frame for conference room.');
+			} 
+			return
+		})
+
+	})
+	.then( x => { 
+		return db.collection('conferenceRoomReservations').doc(reservationUID).update(dict)
+		.catch( error => { 
+			console.error(error);
+			throw new functions.https.HttpsError(error);
+		})
+	})
+});
+
+exports.getUsersReservationsForToday = functions.https.onCall((data, context) => { 
+	const userUID = context.auth.uid || null;
+
+	if (userUID === null) { 
+		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
+	}
+
+	var reservations = []; 
+	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
+	.then( docSnapshots => { 
+		const docsData = docSnapshots.docs.map( x => x.data() );
+		return docsData
+	}) 
+	.then( docsData => { 
+		console.log(docsData);
+		const filteredData = docsData.filter(x => { 
+			const startDate = x.startDate.toDate(); 
+			var todayEnd = new Date(new Date().toUTCString());
+			todayEnd.setHours(23,59,59,999);
+			return (startDate <= todayEnd)
+		});
+		console.log(filteredData);
+		const tempArr = reservations.concat(filteredData);
+		reservations = tempArr;
+		return
+	})
+	// var deskResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc')
+
+	return Promise.all([roomResQuery])
+	.then( x => { 
+		var promises = reservations.map( x => { 
+
+			return db.collection('conferenceRooms').doc(x.roomUID).get()
+			.then( docRef => { 
+				if (docRef.exists) { 
+					x.conferenceRoom = docRef.data();
+				}
+				return x
+			})
+				
+		});
+
+		return Promise.all(promises)
+		.then( reservations => { 
+			return reservations
+		})
+		.catch(error => { 
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	.then( reservationData => { 
+		var promises = reservationData.map( x => { 
+			const room = x.conferenceRoom;
+			const officeUIDs = room.officeUID;
+			return getExpandedOfficeData(officeUIDs)
+	  		.then( officeData => { 
+	  			x.conferenceRoom.offices = officeData; 
+	  			return x
+	  		})
+	  		.catch(error => { 
+				throw new functions.https.HttpsError(error);
+	  		})
+		})
+
+		return Promise.all(promises)
+		.then( updatedReservationData => { 
+			return updatedReservationData
+		})
+		.catch( error => { 
+			throw new functions.https.HttpsError(error);
+		})
+
+	})
+	.then( reservationData => { 
+		var promises = reservationData.map( x => { 
+			const userUID = x.userUID || null;
+			if (userUID === null) {
+				return x
+			}
+			return db.collection('users').doc(x.userUID).get()
+			.then(docRef => {
+				if (docRef.exists) { 
+					x.host = docRef.data(); 
+				}
+				return x
+			})
+		})
+
+		return Promise.all(promises)
+		.then( updatedReservationData => { 
+			return updatedReservationData
+		})
+	})
+	.then( reservationData => { 
+		var promises = reservationData.map( x => { 
+			const attendees = x.attendees || null;
+			if ((attendees === null) || (attendees.length === 0)) {
+				return x
+			}
+			return getUserData(attendees)
+			.then( userData => { 
+				x.attendees = userDate
+				return x
+			})
+		})
+
+		return Promise.all(promises)
+		.then( finalReservationData => { 
+			return finalReservationData
+		})
+	})
+	.catch( error => { 
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+
+});
+
+
 
