@@ -1,8 +1,8 @@
 'use strict';
 
-const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-admin.initializeApp();
+admin.initializeApp()
+const functions = require('firebase-functions');
 
 const {google} = require('googleapis');
 const OAuth2 = google.auth.OAuth2;
@@ -1971,7 +1971,8 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 			startDate: startTime, 
 			endDate: endTime, 
 			userUID: userUID, 
-			attendees: attendees.map( x => x.uid )
+			attendees: attendees.map( x => x.uid ), 
+			canceled: false 
 		})
 		.catch( error => { 
 			throw new functions.https.HttpsError(error); 
@@ -2002,48 +2003,48 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 		.then( docRef => { 
 			if (docRef.exists) { 
 				const data = docRef.data(); 
-				const buildingUID = data.buildingUID || null; 
-				return buildingUID
+				const address = data.address || null; 
+				return address
 			}
 			return null
 		})
-	})
-	.then( address => { 
+		.then( address => { 
 
-		if (userEmail !== null) { 
-			attendees.push({"email": userEmail});
-		}
+			if (userEmail !== null) { 
+				attendees.push({"email": userEmail});
+			}
 
-		var location = ""
-		if (address !== null) { 
-			location = address; 
-		}
+			var location = ""
+			if (address !== null) { 
+				location = address; 
+			}
 
-		// create calendar invite 
-		const eventData = {
-	        eventName: reservationTitle	,
-	        description: note,
-	        startTime: startTime,
-	        endTime: endTime, 
-	        attendees: attendees,
-	        location: location
-    	};
-    	const oAuth2Client = new OAuth2(
-	    	googleCredentials.web.client_id,
-	        googleCredentials.web.client_secret,
-	        googleCredentials.web.redirect_uris[0]
-    	);
+			// create calendar invite 
+			const eventData = {
+		        eventName: reservationTitle	,
+		        description: note,
+		        startTime: startTime,
+		        endTime: endTime, 
+		        attendees: attendees,
+		        location: location
+	    	};
+	    	const oAuth2Client = new OAuth2(
+		    	googleCredentials.web.client_id,
+		        googleCredentials.web.client_secret,
+		        googleCredentials.web.redirect_uris[0]
+	    	);
 
-	    oAuth2Client.setCredentials({
-	        refresh_token: googleCredentials.refresh_token
-	    });
+		    oAuth2Client.setCredentials({
+		        refresh_token: googleCredentials.refresh_token
+		    });
 
-    	return addEvent(eventData, oAuth2Client).then(data => {
-        	return data;
-    	}).catch(err => {
-        	console.error('Error adding event: ' + err.message); 
-        	throw new functions.https.HttpsError(err);
-   		});
+	    	return addEvent(eventData, oAuth2Client).then(data => {
+	        	return data;
+	    	}).catch(err => {
+	        	console.error('Error adding event: ' + err.message); 
+	        	throw new functions.https.HttpsError(err);
+	   		});
+		})
 	})
 	.catch(error => { 
 		console.error(error);
@@ -2223,7 +2224,7 @@ exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, 
 
 	});
 
-	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','asc').get()
+	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','desc').get()
 	.then( docSnapshots => { 
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		var promises = docsData.map( x => { 
@@ -2526,20 +2527,20 @@ exports.getUsersReservationsForToday = functions.https.onCall((data, context) =>
 	}
 
 	var reservations = []; 
-	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
+	var todayStart = new Date(new Date().toUTCString());
+	
+	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',todayStart).where('canceled','==',false).orderBy('startDate','asc').get()
 	.then( docSnapshots => { 
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		return docsData
 	}) 
 	.then( docsData => { 
-		console.log(docsData);
 		const filteredData = docsData.filter(x => { 
 			const startDate = x.startDate.toDate(); 
 			var todayEnd = new Date(new Date().toUTCString());
 			todayEnd.setHours(23,59,59,999);
 			return (startDate <= todayEnd)
 		});
-		console.log(filteredData);
 		const tempArr = reservations.concat(filteredData);
 		reservations = tempArr;
 		return
@@ -2634,6 +2635,40 @@ exports.getUsersReservationsForToday = functions.https.onCall((data, context) =>
 		throw new functions.https.HttpsError(error);
 	})
 
+});
+
+exports.cancelRoomReservation = functions.https.onCall((data, context) => { 
+	const reservationUID = data.reservationUID || null; 
+	const userUID = context.auth.uid || null; 
+
+	if (reservationUID === null) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide a reservationUID.');
+	}
+
+	return db.collection('conferenceRoomReservations').doc(reservationUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data(); 
+			const reservationUserUID = data.userUID || null; 
+			if (reservationUserUID === null) {
+				throw new functions.https.HttpsError('permission-denied','Reservation does not have a host UID.');
+			}
+			if (reservationUserUID !== userUID) { 
+				throw new functions.https.HttpsError('permission-denied','User does not have permission to modify this reservation.');
+			}
+
+			return 
+		} else { 
+			throw new functions.https.HttpsError('not-found','Unable to find room reservation in database.');
+		}
+	})
+	.then( x => { 
+		return db.collection('conferenceRoomReservations').doc(reservationUID).update({'canceled': true});
+	})
+	.catch( error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
 });
 
 
