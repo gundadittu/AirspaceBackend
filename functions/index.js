@@ -2,19 +2,15 @@
 
 const admin = require('firebase-admin');
 admin.initializeApp()
+
 const functions = require('firebase-functions');
-
-const {google} = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
-const calendar = google.calendar('v3');
-const googleCredentials = require('./credentials.json');
-
-const ERROR_RESPONSE = { 
-	status: "500", 
-	message:"There was an issue adding to calendar."
-};
-
-const TIME_ZONE = 'America/Los_Angeles';
+const conferenceRoomFunctions = require('./conferenceRooms');
+const hotDeskFunctions = require('./hotDesks');
+const eventFunctions = require('./events');
+const reservationFunctions = require('./reservations');
+const notificationFunctions = require('./notifications');
+const serviceRequestFunctions = require('./serviceRequests');
+const registerGuestFunctions = require('./registerGuests');
 
 var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
@@ -22,63 +18,132 @@ db.settings(settings);
 
 // *--- ADMIN FUNCTIONS ----*
 
-exports.getUserProfile = functions.https.onCall((data, context) => { 
-	const userUID = data.userUID || null; 
-	if (userUID === null) { 
+exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
+	return reservationFunctions.getUsersReservationsForRange(data, context, db);
+});
+
+exports.findAvailableConferenceRooms = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.findAvailableConferenceRooms(data, context, db);
+});
+
+exports.getReservationsForConferenceRoom = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.getReservationsForConferenceRoom(data, context, db);
+});
+
+exports.createConferenceRoomReservation = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.createConferenceRoomReservation(data, context, db);
+});
+
+exports.getAllConferenceRoomsForUser = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.getAllConferenceRoomsForUser(data, context, db);
+});
+
+exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.getAllConferenceRoomReservationsForUser(data, context, db);
+});
+
+exports.cancelRoomReservation = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.cancelRoomReservation(data, context, db);
+});
+
+exports.updateConferenceRoomReservation = functions.https.onCall((data, context) => {
+	return conferenceRoomFunctions.updateConferenceRoomReservation(data, context, db);
+});
+
+exports.createHotDeskReservation = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.createHotDeskReservation(data, context, db);
+});
+
+exports.findAvailableHotDesks = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.findAvailableHotDesks(data, context, db);
+});
+
+exports.getReservationsForHotDesk = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.getReservationsForHotDesk(data, context, db);
+});
+
+exports.getAllHotDesksForUser = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.getAllHotDesksForUser(data, context, db);
+});
+
+exports.getAllHotDeskReservationsForUser = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.getAllHotDeskReservationsForUser(data, context, db);
+});
+
+exports.updateHotDeskReservation = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.updateHotDeskReservation(data, context, db);
+});
+
+exports.cancelHotDeskReservation = functions.https.onCall((data, context) => {
+	return hotDeskFunctions.cancelHotDeskReservation(data, context, db);
+});
+
+exports.getUsersNotifications = functions.https.onCall((data, context) => {
+	return notificationFunctions.getUsersNotifications(data, context, db);
+});
+
+exports.getUpcomingEventsForUser = functions.https.onCall((data, context) => {
+	return eventFunctions.getUpcomingEventsForUser(data, context, db);
+});
+
+
+exports.getUserProfile = functions.https.onCall((data, context) => {
+	const userUID = data.userUID || null;
+	if (userUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', 'Need to provide a userUID.');
 	}
 
 	return db.collection('users').doc(userUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			return data; 
-		} else { 
+	.then( docRef => {
+		if (docRef.exists) {
+			const data = docRef.data();
+			return data;
+		} else {
 			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
 		}
 	})
-	.then( data => { 
+	.then( data => {
 		const companies = data.companies || null;
 		const promises = Promise.all(companies.map( x => {
 			return db.collection('companies').doc(x).get()
-			.then( docRef => { 
-				return docRef.data(); 
+			.then( docRef => {
+				return docRef.data();
 			} )
-			.catch( error => { 
-				console.error(error); 
+			.catch( error => {
+				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
 		}
 		));
 		return promises
-		.then( companyProfiles => { 
+		.then( companyProfiles => {
 			data.companies = companyProfiles;
 			return data;
 		})
 	})
-	.then( data => { 
+	.then( data => {
 		const offices = data.offices || null;
 		const promises = Promise.all(offices.map( x => {
 			return db.collection('offices').doc(x).get()
-			.then( docRef => { 
-				return docRef.data(); 
+			.then( docRef => {
+				return docRef.data();
 			} )
-			.catch( error => { 
-				console.error(error); 
+			.catch( error => {
+				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
 		}
 		));
 		return promises
-		.then( officeProfiles => { 
+		.then( officeProfiles => {
 			data.offices = officeProfiles;
 			return data;
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
-	}) 
+	})
 });
 
 
@@ -166,7 +231,7 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 	const type = data.type || null;
 	const email = data.email || null;
 	var dict = {};
-	var adminStatus = false 
+	var adminStatus = false
 
 	if (uid === null) {
 		throw new functions.https.HttpsError('invalid-arguments', "Must provide user uid.");
@@ -176,20 +241,20 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('users').doc(uid).get()
-	.then( docRef => { 
+	.then( docRef => {
 		if (doc.exists) {
        		const data = doc.data();
-       		const userType = data.type; 
+       		const userType = data.type;
 
-       		// need to add check to see if tenantAdmin in order to change email address 
-       		if (userType === 'admin') { 
+       		// need to add check to see if tenantAdmin in order to change email address
+       		if (userType === 'admin') {
        			adminStatus = true;
-       			return 
+       			return
        		} else if (uid !== authUserUID)  { // check if an user is attempting to change another users info
        			throw new functions.https.HttpsError('permission-denied','User can not only change their own bio info.');
-       		} else { 
+       		} else {
        			// this case means uid === authUserUID
-       			return 
+       			return
        		}
 
     	} else {
@@ -197,7 +262,7 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
        	 	throw new functions.https.HttpsError('invalid-arguments','User uid is not valid.');
     	}
 	})
-	.then( x => { 
+	.then( x => {
 		if (firstName !== null) {
 		  dict["firstName"] = firstName
 		}
@@ -224,7 +289,7 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 			throw new functions.https.HttpsError('internal', "There was an issue updating user profile bio info: ", uid);
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
@@ -284,154 +349,154 @@ exports.deleteUser = functions.https.onCall((data, context) => {
 	});
 });
 
-exports.createBuilding = functions.https.onCall((data, context) => { 
-	const bName = data.name || null; 
+exports.createBuilding = functions.https.onCall((data, context) => {
+	const bName = data.name || null;
 	const bAddress = data.address || null;
-	
-	if (bName === null || bAddress === null) { 
-		throw new functions.https.HttpsError("invalid-arguments", "Must provide a building name and address.")
-	} 
 
-	return db.collection('buildings').add({ 
-		name: bName, 
-		address: bAddress, 
-	}).then( (docRef) => { 
-		const id = docRef.id 
-		return db.collection('buildings').doc(id).update({ 
+	if (bName === null || bAddress === null) {
+		throw new functions.https.HttpsError("invalid-arguments", "Must provide a building name and address.")
+	}
+
+	return db.collection('buildings').add({
+		name: bName,
+		address: bAddress,
+	}).then( (docRef) => {
+		const id = docRef.id
+		return db.collection('buildings').doc(id).update({
 			uid: id
 		})
-		.then( (docRef) => { 
+		.then( (docRef) => {
 			console.log("Successfully added building.");
 			return
 		})
-		.catch( (error) => { 
+		.catch( (error) => {
 			console.log("Error adding building id to database: ", error);
 			throw new functions.https.HttpsError("internal", "Error adding new building ID into database.")
-		}) 
+		})
 	})
-	.catch( (error) => { 
+	.catch( (error) => {
 		console.log("Error adding building: ", error);
 		throw new functions.https.HttpsError("internal", "Error adding new building data into database.")
 	})
 });
 
-exports.getAllBuildings = functions.https.onCall((data, context) => { 
+exports.getAllBuildings = functions.https.onCall((data, context) => {
 	return db.collection('buildings').get()
-	.then((snapshot) => { 
+	.then((snapshot) => {
 		const docs = snapshot.docs.map( x => x.data());
 		console.log("Successfully got all buildings: ", docs);
 		return {"buildings": docs}
 	})
-	.catch( (error) => { 
+	.catch( (error) => {
 		throw new functions.https.HttpsError("internal", "Unable to get all buildings: ", error);
 	})
 });
 
-exports.addLandlordToBuilding = functions.https.onCall((data, context) => { 
-	const userUID = data.userUID || null; 
+exports.addLandlordToBuilding = functions.https.onCall((data, context) => {
+	const userUID = data.userUID || null;
 	const buildingUID = data.buildingUID || null;
-	if (userUID === null || buildingUID === null) { 
+	if (userUID === null || buildingUID === null) {
 		throw new functions.https.HttpsError("invalid-arguments", "Need to provide building and landlord UID.");
 	}
-	// const userType = await extractUserTypeFromUID(userUID); 
+	// const userType = await extractUserTypeFromUID(userUID);
 
-	// if (userType !== 'landlord') { 
+	// if (userType !== 'landlord') {
 	// 	throw new functions.https.HttpsError("invalid-arguments", "Need to provide user with Landlord type.");
 	// }
 
 	const dbop1 = db.collection("buildings").doc(buildingUID).update({"landlords": admin.firestore.FieldValue.arrayUnion(userUID)})
-	.then( docRef => { 
+	.then( docRef => {
 		console.log("Successfully added landlord to building.");
-		return 
+		return
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.log("Error setting landlord for building.");
 		throw new functions.https.HttpsError("internal", "Unable to add landlord for building in database: ", error);
 	})
 
 	const dbop2 = db.collection("users").doc(userUID).update({"buildings": admin.firestore.FieldValue.arrayUnion(buildingUID)})
-	.then( docRef => { 
+	.then( docRef => {
 		console.log("Successfully added building under landlord.");
-		return 
+		return
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.log("Error setting building under landlord in database.");
 		throw new functions.https.HttpsError("internal", "Unable to add set building under landlord in database.")
 	})
 
-	return Promise.all([dbop1, dbop2]); 
+	return Promise.all([dbop1, dbop2]);
 });
 
-exports.removeLandlordFromBuilding = functions.https.onCall((data, context) => { 
-	const userUID = data.userUID || null; 
+exports.removeLandlordFromBuilding = functions.https.onCall((data, context) => {
+	const userUID = data.userUID || null;
 	const buildingUID = data.buildingUID || null;
-	if (userUID === null || buildingUID === null) { 
+	if (userUID === null || buildingUID === null) {
 		throw new functions.https.HttpsError("invalid-arguments", "Need to provide building and landlord UID.");
 	}
-	// const userType = await extractUserTypeFromUID(userUID); 
+	// const userType = await extractUserTypeFromUID(userUID);
 
-	// if (userType !== 'landlord') { 
+	// if (userType !== 'landlord') {
 	// 	throw new functions.https.HttpsError("invalid-arguments", "Need to provide user with Landlord type.");
 	// }
 
 	const dbop1 = db.collection("buildings").doc(buildingUID).update({"landlords": admin.firestore.FieldValue.arrayRemove(userUID)})
-	.then( docRef => { 
+	.then( docRef => {
 		console.log("Successfully removed landlord to building.");
-		return 
+		return
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.log("Error removing landlord for building.");
 		throw new functions.https.HttpsError("internal", "Unable to remove landlord for building in database: ", error);
 	})
 
 	const dbop2 = db.collection("users").doc(userUID).update({"buildings": admin.firestore.FieldValue.arrayRemove(buildingUID)})
-	.then( docRef => { 
+	.then( docRef => {
 		console.log("Successfully removed building under landlord.");
-		return 
+		return
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.log("Error removing building under landlord in database.");
 		throw new functions.https.HttpsError("internal", "Unable to remove building under landlord in database.")
 	})
 
-	return Promise.all([dbop1, dbop2]); 
+	return Promise.all([dbop1, dbop2]);
 });
 
-exports.getAllLandlords = functions.https.onCall((data, context) => { 
+exports.getAllLandlords = functions.https.onCall((data, context) => {
 	const query = db.collection("users").where('type','==','landlord');
 	return query.get()
-	.then( (querySnapshot) => { 
+	.then( (querySnapshot) => {
 		const landlordsArray = querySnapshot.docs.map( x => x.data() );
 		console.log("Successfully got all landlords: ", landlordsArray);
 		return landlordsArray;
 	})
-	.catch( error => { 
+	.catch( error => {
 		throw new functions.https.HttpsError('internal', 'Unable to access database: ', error);
 	})
-});  
+});
 
-exports.getBuildingProfile = functions.https.onCall((data, context) => { 
-	const buildingUID = data.buildingUID || null; 
-	if (buildingUID === null) { 
+exports.getBuildingProfile = functions.https.onCall((data, context) => {
+	const buildingUID = data.buildingUID || null;
+	if (buildingUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide building uid.')
 	}
 	return db.collection("buildings").doc(buildingUID).get()
-		.then( doc => { 
-			if (doc.exists) { 
+		.then( doc => {
+			if (doc.exists) {
 				const data = doc.data();
 				return data;
-			} else { 
+			} else {
 				throw new functions.https.HttpsError('not-found', "Unable to find building in database: ", buildingUID);
 			}
 		})
-		.then( data => { 
-			const landlords = data.landlords || null; 
-			if (landlords === null) { 
-				return data; 
+		.then( data => {
+			const landlords = data.landlords || null;
+			if (landlords === null) {
+				return data;
 			}
 			const promise = Promise.all(landlords.map(x => {
 				return db.collection("users").doc(x).get()
-				.then( (docRef) => { 
+				.then( (docRef) => {
 					if (docRef.exists) {
 						const data = docRef.data();
 						return data;
@@ -440,22 +505,22 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 				})
 			}));
 			return promise
-			.then( (landlordProfiles) => { 
+			.then( (landlordProfiles) => {
 				data.landlords = landlordProfiles;
 				return data
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError('internal', "Unable to extract landlords for building from database: ", buildingUID);
 			})
 		})
-		.then( data => { 
-			const offices = data.offices || null; 
-			if (offices === null) { 
-				return data; 
+		.then( data => {
+			const offices = data.offices || null;
+			if (offices === null) {
+				return data;
 			}
 			const promise = Promise.all(offices.map(x => {
 				return db.collection("offices").doc(x).get()
-				.then( (docRef) => { 
+				.then( (docRef) => {
 					if (docRef.exists) {
 						const data = docRef.data();
 						return data;
@@ -464,15 +529,15 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 				})
 			}));
 			return promise
-			.then( (officeProfiles) => { 
+			.then( (officeProfiles) => {
 				data.offices = officeProfiles;
 				return data;
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError('internal', "Unable to extract offices for building from database: ", buildingUID);
 			})
 		})
-		.catch( error => { 
+		.catch( error => {
 			throw new functions.https.HttpsError('internal', "Unable to extract building from database: ", buildingUID);
 		})
 });
@@ -510,97 +575,97 @@ exports.updateBuildingBioInfo = functions.https.onCall((data, context) => {
 
 });
 
-exports.getAllCompanies = functions.https.onCall((data, context) => { 
+exports.getAllCompanies = functions.https.onCall((data, context) => {
 	return db.collection('companies').get()
-	.then((snapshot) => { 
+	.then((snapshot) => {
 		const docs = snapshot.docs.map( x => x.data());
 		console.log("Successfully got all companies: ", docs);
 		return {"companies": docs}
 	})
-	.catch( (error) => { 
+	.catch( (error) => {
 		throw new functions.https.HttpsError("internal", "Unable to get all companies: ", error);
 	})
 });
 
-exports.createCompany = functions.https.onCall((data, context) => { 
-	const name = data.name || null; 
-	if (name === null) { 
+exports.createCompany = functions.https.onCall((data, context) => {
+	const name = data.name || null;
+	if (name === null) {
 		throw new functions.https.HttpsError("invalid-arguments", "Need to provide a company name.");
 	}
 
 	return db.collection('companies').add({ name: name })
-	.then( docRef => { 
-		const id = docRef.id 
-		return db.collection('companies').doc(id).update({ 
+	.then( docRef => {
+		const id = docRef.id
+		return db.collection('companies').doc(id).update({
 			uid: id
 		})
-		.then( (docRef) => { 
+		.then( (docRef) => {
 			console.log("Successfully created new company", id)
 			return
 		})
-		.catch( (error) => { 
+		.catch( (error) => {
 			console.log("Error adding new company id to database: ", error);
 			throw new functions.https.HttpsError("internal", "Error adding new company ID into database.")
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		throw new functions.https.HttpsError('internal', 'Unable to create new company in database.')
 	})
 });
 
-exports.getCompanyProfile = functions.https.onCall((data, context) => { 
+exports.getCompanyProfile = functions.https.onCall((data, context) => {
 	const companyUID = data.companyUID || null;
 
-	if (companyUID === null) { 
+	if (companyUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide company uid.')
 	}
 	return db.collection("companies").doc(companyUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			return docRef.data() 
-		} else { 
+	.then( docRef => {
+		if (docRef.exists) {
+			return docRef.data()
+		} else {
 			throw new functions.https.HttpsError('not-found', 'Could not find company with uid: ', companyUID);
 		}
 	})
-	.then( data => { 
+	.then( data => {
 		const employees = data.employees || null;
 		const promises = Promise.all(employees.map( x => {
 			return db.collection('users').doc(x).get()
-			.then( docRef => { 
-				return docRef.data(); 
+			.then( docRef => {
+				return docRef.data();
 			} )
-			.catch( error => { 
-				console.error(error); 
+			.catch( error => {
+				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
 		}
 		));
 		return promises
-		.then( employeeProfiles => { 
+		.then( employeeProfiles => {
 			data.employees = employeeProfiles;
 			return data;
 		})
 	})
-	.then( data => { 
+	.then( data => {
 		const offices = data.offices || null;
 		const promises = Promise.all(offices.map( x => {
 			return db.collection('offices').doc(x).get()
-			.then( docRef => { 
-				return docRef.data(); 
+			.then( docRef => {
+				return docRef.data();
 			} )
-			.catch( error => { 
-				console.error(error); 
+			.catch( error => {
+				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
 		}
 		));
 		return promises
-		.then( officeProfiles => { 
+		.then( officeProfiles => {
 			data.offices = officeProfiles;
 			return data;
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		throw new functions.https.HttpsError('internal', 'Could not get company from database.', companyUID);
 	})
 })
@@ -633,123 +698,123 @@ exports.updateCompanyBioInfo = functions.https.onCall((data, context) => {
 
 });
 
-exports.getAllOffices = functions.https.onCall((data, context) => { 
+exports.getAllOffices = functions.https.onCall((data, context) => {
 	return db.collection('offices').get()
-	.then( snapshot => { 
+	.then( snapshot => {
 		const docs = snapshot.docs.map( x => x.data());
 		console.log("Successfully got all offices: ", docs);
 		return docs;
 	})
 	.then( docs => {
-		if (docs.length === 0) { 
+		if (docs.length === 0) {
 			return docs;
 		}
 		const promises = Promise.all(docs.map( x => {
-			const buildingUID = x.buildingUID || null; 
-			if (buildingUID === null) { 
+			const buildingUID = x.buildingUID || null;
+			if (buildingUID === null) {
 				throw new functions.https.HttpsError("not-found", "Unable to find office's buildingUID for office: ", x.uid);
 			}
 			return db.collection('buildings').doc(buildingUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					const data = docRef.data() 
+			.then( docRef => {
+				if (docRef.exists) {
+					const data = docRef.data()
 					console.log(data);
 					x.buildingName = data.name;
-					console.log(x); 
+					console.log(x);
 					return x;
-				} else { 
+				} else {
 					throw new functions.https.HttpsError("not-found", "Unable to find office's building with id: ", x.buildingUID);
 				}
 			})
 		}));
 
 		return promises
-		.then( offices => { 
+		.then( offices => {
 			return { "offices": offices };
 		})
-		.catch( error => { 
+		.catch( error => {
 			throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
 	})
 });
 
-exports.createOffice = functions.https.onCall((data, context) => { 
-	const name = data.name || null; 
-	const buildingUID = data.buildingUID || null; 
-	const floor = data.floor || null; 
+exports.createOffice = functions.https.onCall((data, context) => {
+	const name = data.name || null;
+	const buildingUID = data.buildingUID || null;
+	const floor = data.floor || null;
 	const roomNo = data.roomNo || null;
 	const capacity = data.capacity || null;
-	
-	var dict = {}; 
-	if (buildingUID === null) { 
+
+	var dict = {};
+	if (buildingUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments','Must provide a building uid for office.');
-	} else { 
-		dict["buildingUID"] = buildingUID; 
+	} else {
+		dict["buildingUID"] = buildingUID;
 	}
 
-	if (name !== null) { 
-		dict["name"] = name; 
+	if (name !== null) {
+		dict["name"] = name;
 	}
 
-	if (floor !== null) { 
-		dict["floor"] = floor; 
+	if (floor !== null) {
+		dict["floor"] = floor;
 	}
 
-	if (roomNo !== null) { 
-		dict["roomNo"] = roomNo; 
+	if (roomNo !== null) {
+		dict["roomNo"] = roomNo;
 	}
 
-	if (capacity !== null) { 
-		dict["capacity"] = capacity; 
+	if (capacity !== null) {
+		dict["capacity"] = capacity;
 	}
 
 	return db.collection('offices').add(dict)
 	.then((docRef) => {
-		const id = docRef.id; 
-		return db.collection('offices').doc(id).update({ 
+		const id = docRef.id;
+		return db.collection('offices').doc(id).update({
 			uid: id
 		})
-		.then( (docRef) => { 
+		.then( (docRef) => {
 			console.log("Successfully created office: ", docRef.id);
 			return id
 		})
-		.catch( (error) => { 
+		.catch( (error) => {
 			throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
 		})
 	})
-	.then((officeUID) => { 
+	.then((officeUID) => {
 		console.log('Successfully added office under building.');
 		return db.collection('buildings').doc(buildingUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)});
 	})
-	.catch( (error) => { 
+	.catch( (error) => {
 		throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
 	})
 })
 
-exports.getOfficeProfile = functions.https.onCall((data, context) => { 
+exports.getOfficeProfile = functions.https.onCall((data, context) => {
 	const officeUID = data.officeUID || null;
-	if (officeUID === null) { 
+	if (officeUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide office uid.')
 	}
 	return db.collection("offices").doc(officeUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			return docRef.data() 
-		} else { 
+	.then( docRef => {
+		if (docRef.exists) {
+			return docRef.data()
+		} else {
 			throw new functions.https.HttpsError('not-found', 'Could not find office with uid: ', officeUID);
 		}
 	})
 	.then( docData => {
 		const buildingUID = docData.buildingUID || null;
-		if (buildingUID === null) { 
+		if (buildingUID === null) {
 			throw new functions.https.HttpsError('internal', 'Could not get buildingUID for office from database.', officeUID);
 		}
 		return db.collection('buildings').doc(buildingUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
+		.then( docRef => {
+			if (docRef.exists) {
 				const data = docRef.data();
 				docData.building = docRef.data();
 			}
@@ -758,12 +823,12 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 	})
 	.then( docData => {
 		const companyUID = docData.companyUID || null;
-		if (companyUID === null) { 
+		if (companyUID === null) {
 			return docData;
 		}
 		return db.collection('companies').doc(companyUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
+		.then( docRef => {
+			if (docRef.exists) {
 				const data = docRef.data();
 				docData.company = docRef.data();
 			}
@@ -772,164 +837,164 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 	})
 	.then( docData => {
 		const employees = docData.employees || null;
-		if (employees === null) { 
-			return docData; 
+		if (employees === null) {
+			return docData;
 		}
 
 		const promises = Promise.all(employees.map( x => {
 			return db.collection('users').doc(x).get()
 			.then( docRef => {
-				if (docRef.exists) { 
-					return docRef.data(); 
-				} else { 
+				if (docRef.exists) {
+					return docRef.data();
+				} else {
 					throw new functions.https.HttpsError('not-found', 'Employee not found in database.');
 				}
 			} )
-			.catch( error => { 
-				console.error(error); 
+			.catch( error => {
+				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
 		}));
 
 		return promises
-		.then( employeeProfiles => { 
+		.then( employeeProfiles => {
 			docData.employees = employeeProfiles;
 			return docData;
 		})
-		.catch( error => { 
+		.catch( error => {
 			console.error(error);
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		throw new functions.https.HttpsError('internal', 'Could not get office from database.', officeUID);
 	})
 });
 
-exports.addOfficeToCompany = functions.https.onCall((data, context) => { 
-	const officeUID = data.officeUID; 
-	const companyUID = data.companyUID; 
+exports.addOfficeToCompany = functions.https.onCall((data, context) => {
+	const officeUID = data.officeUID;
+	const companyUID = data.companyUID;
 
-	if (officeUID === null || companyUID === null) { 
+	if (officeUID === null || companyUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and companyUID.");
 	}
 	return db.collection('offices').doc(officeUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
+	.then( docRef => {
+		if (docRef.exists) {
 			const data = docRef.data()
-			const currCompanyUID = data.companyUID || null; 
-			if (currCompanyUID !== null) { 
-				if (currCompanyUID !== companyUID) { 
+			const currCompanyUID = data.companyUID || null;
+			if (currCompanyUID !== null) {
+				if (currCompanyUID !== companyUID) {
 					throw new functions.https.HttpsError('failed-precondition','The office is currently assigned to a different company.');
 				}
 			}
 
 			const dbop1 = db.collection('offices').doc(officeUID).update({'companyUID': companyUID})
-			.then( docRef => { 
+			.then( docRef => {
 				console.log("Successfully added company to office.");
-				return 
+				return
 			})
-			.catch( error => { 
+			.catch( error => {
 				console.log("Error setting company for office.");
 				throw new functions.https.HttpsError("internal", "Unable to add company to office in database: ", error);
 			})
 
 			const dbop2 = db.collection('companies').doc(companyUID).update({"offices": admin.firestore.FieldValue.arrayUnion(officeUID)})
-			.then( docRef => { 
+			.then( docRef => {
 				console.log("Successfully added office to company.");
-				return 
+				return
 			})
-			.catch( error => { 
+			.catch( error => {
 				console.log("Error adding office for company.");
 				throw new functions.https.HttpsError("internal", "Unable to add office to company in database: ", error);
 			})
 
 			return Promise.all([dbop1, dbop2]);
-		} else { 
-			throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID); 
+		} else {
+			throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
 		}
 	})
-	.catch( error => { 
-		throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID); 
+	.catch( error => {
+		throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
 	})
 
 });
 
-exports.addUserToOffice = functions.https.onCall((data, context) => { 
-	const officeUID = data.officeUID || null; 
-	const userUID = data.userUID || null; 
+exports.addUserToOffice = functions.https.onCall((data, context) => {
+	const officeUID = data.officeUID || null;
+	const userUID = data.userUID || null;
 
-	if (officeUID === null || userUID === null) { 
+	if (officeUID === null || userUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and userUID.");
 	}
 
-	return db.collection("offices").doc(officeUID).get() 
-	.then( docRef => { 
+	return db.collection("offices").doc(officeUID).get()
+	.then( docRef => {
 		console.log('1');
-		if (docRef.exists) { 
+		if (docRef.exists) {
 			const data = docRef.data();
 			const officeCompanyUID = data.companyUID;
 			return officeCompanyUID;
-		} else { 
+		} else {
 			throw new functions.https.HttpsError('not-found', "Unable to find companyUID for office: ", officeUID);
 		}
 	})
-	.then ( officeCompanyUID => { 
+	.then ( officeCompanyUID => {
 		console.log('2');
 		return db.collection('users').doc(userUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
-				const data = docRef.data() 
+		.then( docRef => {
+			if (docRef.exists) {
+				const data = docRef.data()
 				const userCompanies = data.companies || null;
-				if (userCompanies !== null) { 
-					if (userCompanies.indexOf(officeCompanyUID) > -1) { 
-						return 
-					} else { 
+				if (userCompanies !== null) {
+					if (userCompanies.indexOf(officeCompanyUID) > -1) {
+						return
+					} else {
 						console.log('perm-den');
 						throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
 					}
-				} else { 
+				} else {
 					console.log('perm-den 2');
 					throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
 				}
-			} else { 
+			} else {
 				console.log('not-found');
 				throw new functions.https.HttpsError('not-found', "Unable to find companyUID for user: ", userUID);
 			}
 		})
-		.catch( error => { 
+		.catch( error => {
 			console.log('3');
 			console.error(error);
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.then( () => { 
+	.then( () => {
 		console.log('3');
 		const dbop1 = db.collection('users').doc(userUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
 
 		const dbop2 = db.collection('offices').doc(officeUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})
 
 		return Promise.all([dbop1, dbop2])
-		.then (docRefs => { 
+		.then (docRefs => {
 			console.log("Successfully added user to office.");
-			return 
+			return
 		})
-		.catch( error => { 
+		.catch( error => {
 			console.error(error);
 			throw new functions.https.HttpsError('internal', 'There was an issue updating the database.');
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 });
 
-exports.addUserToCompany = functions.https.onCall((data, context) => { 
-	const companyUID = data.companyUID || null; 
-	const userUID = data.userUID || null; 
+exports.addUserToCompany = functions.https.onCall((data, context) => {
+	const companyUID = data.companyUID || null;
+	const userUID = data.userUID || null;
 
-	if (companyUID === null || userUID === null) { 
+	if (companyUID === null || userUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a companyUID and userUID.");
 	}
 
@@ -938,249 +1003,184 @@ exports.addUserToCompany = functions.https.onCall((data, context) => {
 	const dbop2 = db.collection('companies').doc(companyUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})
 
 	return Promise.all([dbop1, dbop2])
-	.then (docRefs => { 
+	.then (docRefs => {
 		console.log("Successfully added user to company.");
-		return 
+		return
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 });
 
-exports.setOfficeBuilding = functions.https.onCall((data, context) => { 
-	const officeUID = data.officeUID || null; 
-	const buildingUID = data.buildingUID || null; 
+exports.setOfficeBuilding = functions.https.onCall((data, context) => {
+	const officeUID = data.officeUID || null;
+	const buildingUID = data.buildingUID || null;
 
-	if (buildingUID === null || officeUID === null) { 
+	if (buildingUID === null || officeUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and buildingUID.");
 	}
 
-	return db.collection('offices').doc(officeUID).get() 
-	.then( (docRef) => { 
+	return db.collection('offices').doc(officeUID).get()
+	.then( (docRef) => {
 
-		if (docRef.exists) { 
-			const data = docRef.data() 
-			const oldBuildingUID = data.buildingUID || null; 
-			const promises = []; 
+		if (docRef.exists) {
+			const data = docRef.data()
+			const oldBuildingUID = data.buildingUID || null;
+			const promises = [];
 			const dbop1 = db.collection('offices').doc(officeUID).update({'buildingUID': buildingUID})
-			promises.push(dbop1); 
+			promises.push(dbop1);
 
-			if (oldBuildingUID !== null) { 
+			if (oldBuildingUID !== null) {
 				const dbop2 = db.collection('buildings').doc(oldBuildingUID).update({'offices': admin.firestore.FieldValue.arrayRemove(officeUID)})
-				promises.push(dbop2); 
+				promises.push(dbop2);
 			}
 			const dbop3 = db.collection('buildings').doc(buildingUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
-			promises.push(dbop3); 
+			promises.push(dbop3);
 
 			return Promise.all(promises)
-			.then (docRefs => { 
+			.then (docRefs => {
 				console.log("Successfully added user to company.");
-				return 
+				return
 			})
-			.catch( error => { 
+			.catch( error => {
 				console.error(error);
 				throw new functions.https.HttpsError(error);
 			})
-		} else { 
+		} else {
 			throw new functions.https.HttpsError('not-found','Unable to find office in database');
 		}
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 });
 
-exports.getCurrentUsersOffices = functions.https.onCall((data, context) => { 
+exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 	const uid = context.auth.uid || null;
-	if (uid === null) { 
+	if (uid === null) {
 		throw new functions.https.HttpsError('invalid-arguments','Unable to find user uid. User must be signed in.');
 	}
 	return db.collection('users').doc(uid).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			return data.offices; 
-		} else { 
+	.then( docRef => {
+		if (docRef.exists) {
+			const data = docRef.data();
+			return data.offices;
+		} else {
 			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
 		}
 	})
-	.then( userOffices => { 
-		if (userOffices === null) { 
+	.then( userOffices => {
+		if (userOffices === null) {
 			return {};
 		}
 
-		const promises = userOffices.map( x => { 
+		const promises = userOffices.map( x => {
 			return db.collection('offices').doc(x).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					return docRef.data(); 
-				} else { 
+			.then( docRef => {
+				if (docRef.exists) {
+					return docRef.data();
+				} else {
 					throw new functions.https.HttpsError('not-found','Unable to find office.');
 				}
 			})
-			.catch(error => { 
+			.catch(error => {
 				throw new functions.https.HttpsError(error);
 			})
 		})
 
 		return Promise.all(promises)
-		.then( officeProfiles => { 
+		.then( officeProfiles => {
 			return officeProfiles;
 		})
-		.catch(error => { 
+		.catch(error => {
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.then( officeData => { 
-		var promises = officeData.map( x => { 
+	.then( officeData => {
+		var promises = officeData.map( x => {
 			const buildingUID = x.buildingUID;
 			return db.collection('buildings').doc(buildingUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
+			.then( docRef => {
+				if (docRef.exists) {
 					const data = docRef.data();
-					x.building = data; 
+					x.building = data;
 				}
 				return x
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError(error);
 			})
 		})
 
 		return Promise.all(promises)
-		.then( newOfficeData => { 
+		.then( newOfficeData => {
 			return newOfficeData;
 		})
-		.catch(error => { 
+		.catch(error => {
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.catch( error => { 
-		console.error(error); 
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.createRegisteredGuest = functions.https.onCall((data, context) => { 
-	const hostUID = context.auth.uid || null; 
-	const guestName = data.guestName || null;
-	const guestEmail = data.guestEmail || null;
-	const expectedVisitDate = new Date(data.expectedVisitDate) || null;
-	const visitingOfficeUID = data.visitingOfficeUID || null;
-
-	if (hostUID === null || guestName === null || expectedVisitDate === null || visitingOfficeUID === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','User must be signed in. Must provide guestName, guestEmail, expectedVisitDate, and visitingOfficeUID.');
-	}
-
-	const companyPromise = db.collection('offices').doc(visitingOfficeUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data();
-			const companyUIDs = data.companyUID; 
-			return companyUIDs; 
-		} else { 
-			throw new functions.https.HttpsError('not-found','Unable to find office with visitingOfficeUID');
-		}
-	})
-
-	return Promise.all([companyPromise])
-	.then( companyUIDs => { 
-		var dict = {'hostUID':hostUID, 'guestName': guestName, 'guestEmail': guestEmail, 'expectedVisitDate': expectedVisitDate, 'visitingOfficeUID': visitingOfficeUID, 'visitingCompanyUID': companyUIDs,'arrived': false, 'canceled': false};
-
-		return db.collection('registeredGuests').add(dict)
-		.then( docRef => { 
-			const guestRegUID = docRef.id;
-			return db.collection('registeredGuests').doc(guestRegUID).update({"uid": guestRegUID})
-			.then( docRef => { 
-				return guestRegUID;
-			})
-		})
-		.then( guestRegUID => { 
-			const promises = [];
-			const userOperation = db.collection('users').doc(hostUID).update({'registeredGuests': admin.firestore.FieldValue.arrayUnion(guestRegUID)});
-			promises.push(userOperation);
-			companyUIDs.forEach( x => { 
-				const companyOperation = db.collection('companies').doc(x).update({'registeredGuests': admin.firestore.FieldValue.arrayUnion(guestRegUID)});
-				promises.push(companyOperation);
-			})
-			return Promise.all(promises);
-		})
-	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 });
 
-exports.updateUserFCMRegToken = functions.https.onCall((data, context) => { 
-	const uid = context.auth.uid || null; 
-	const regToken = data.regToken || null;
-	const oldToken = data.oldToken || null;
-
-	if (uid === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','User must be signed in. Must provide guestName, guestEmail, expectedVisitDate, and visitingOfficeUID.');
-	}
-	
-	const promises = [];
-	if (regToken !== null) { 
-		const dbop1 =  db.collection('users').doc(uid).update({'registrationToken': admin.firestore.FieldValue.arrayUnion(regToken)})
-		.then(res => { 
-			console.log("Successfully added new registrationToken for user: ", uid);
-			return 
-		})
-		.catch( error => { 
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-		promises.push(dbop1);
-	}
-	if ((oldToken !== null) && (oldToken !== regToken)) {
-		const dbop2 =  db.collection('users').doc(uid).update({'registrationToken': admin.firestore.FieldValue.arrayRemove(oldToken)})
-		.then(res => { 
-			console.log("Successfully removed old registrationToken for user: ", uid);
-			return 
-		})
-		.catch( error => { 
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-		promises.push(dbop2);
-	}
-
-	return Promise.all(promises)
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
+exports.createRegisteredGuest = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.createRegisteredGuest(data, context, db);
 });
 
-exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => { 
-	const newValue = change.after.data(); 
+exports.updateUserFCMRegToken = functions.https.onCall((data, context) => {
+	return notificationFunctions.updateUserFCMRegToken(data, context, db);
+});
+
+exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.getUsersRegisteredGuests(data, context, db);
+});
+
+exports.cancelRegisteredGuest = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.cancelRegisteredGuest(data, context, db);
+});
+
+exports.createServiceRequest = functions.https.onCall((data, context) => {
+	return serviceRequestFunctions.createServiceRequest(data, context, db);
+});
+
+exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
+	serviceRequestFunctions.getUsersServiceRequests(data, context, db);
+});
+
+exports.cancelServiceRequest = functions.https.onCall((data, context) => {
+	return serviceRequestFunctions.cancelServiceRequest(data, context, db);
+});
+
+exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
+	const newValue = change.after.data();
 	const oldValue = change.before.data();
-	const arrived = newValue.arrived || null; 
+	const arrived = newValue.arrived || null;
 	const hostUID = oldValue.hostUID || null;
 	const guestName = oldValue.guestName || null;
 
-	if (arrived === null || hostUID === null) { 
+	if (arrived === null || hostUID === null) {
 		console.log("Need to provide a value for arrived and hostUID to trigger notification to host.");
-		return 
+		return
 	}
 
-	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) { 
+	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) {
 		return db.collection('users').doc(hostUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
+		.then( docRef => {
+			if (docRef.exists) {
 				const data = docRef.data();
-				const registrationTokens = data.registrationToken || null; 
+				const registrationTokens = data.registrationToken || null;
 
 				const notificationTitle = 'Your guest has arrived.';
 				data.notificationTitle = notificationTitle;
 				const notificationBody = 'Please meet '+ guestName +' by the reception area.';
 				data.notificationBody = notificationBody;
 
-				registrationTokens.forEach( x => { 
+				registrationTokens.forEach( x => {
 
 					var message = {
 						"token" : x,
@@ -1203,340 +1203,54 @@ exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuest
 				});
 
 				return data;
-			} else { 
+			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
 			}
 		})
-		.then( arrivedGuestData => { 
+		.then( arrivedGuestData => {
 			const dataDict = { 'registeredGuestUID': context.params.registrationID, 'guestName': guestName,'hostUID': hostUID };
 			return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
 				type: 'arrivedGuestUpdate',
 				readStatus: false,
-				data: dataDict, 
+				data: dataDict,
 				title: arrivedGuestData.notificationTitle,
 				body: arrivedGuestData.notificationBody,
 				timestamp: new Date(new Date().toUTCString())
 			})
-			.then(docRef => { 
+			.then(docRef => {
 				return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError(error);
 			})
 
 		})
-		.catch(error => { 
+		.catch(error => {
 			console.error(error);
 			throw new functions.https.HttpsError(error);
 		})
-	} 
-	return 
+	}
+	return
 });
 
-exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => { 
-	const uid = context.auth.uid || null; 
-	if (uid === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','User must be signed in.');
-	}
-
-	const dict = {}; 
-	const promises = []
-	const upcoming = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',false).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => x.data());
-		const docs = docsData.map(x => { 
-			const officeUID = x.visitingOfficeUID || null; 
-			if (officeUID !== null) { 
-				return db.collection('offices').doc(officeUID).get() 
-				.then(docRef => { 
-					const data = docRef.data() || null; 
-					x.visitingOffice = data; 
-					return x
-				})
-				.catch( error => { 
-					throw new functions.https.HttpsError(error);
-				})
-			} else { 
-				return x
-			}
-		})
-
-		return Promise.all(docs)
-		.then( updatedDocs => { 
-			dict['upcoming'] = updatedDocs; 
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	const past = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',true).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => x.data());
-		const docs = docsData.map(x => { 
-			const officeUID = x.visitingOfficeUID || null; 
-			if (officeUID !== null) { 
-				return db.collection('offices').doc(officeUID).get() 
-				.then(docRef => { 
-					const data = docRef.data() || null; 
-					x.visitingOffice = data; 
-					return x
-				})
-			} else { 
-				return x
-			}
-		})
-		return Promise.all(docs)
-		.then( updatedDocs => { 
-			dict['past'] = updatedDocs; 
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	promises.push(upcoming);
-	promises.push(past);
-
-	return Promise.all(promises)
-	.then( res => { 
-		console.log('Successfully got all registered guests for user('+uid+') : '+dict);
-		return dict
-	})
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.cancelRegisteredGuest = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null; 
-	const registeredGuestUID = data.registeredGuestUID || null; 
-	if (userUID === null || registeredGuestUID === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','User must be signed in, and must provide registeredGuestUID.');
-	}
-
-	return db.collection('registeredGuests').doc(registeredGuestUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data() 
-			if (data.hostUID !== userUID) { 
-				throw new functions.https.HttpsError('permission-denied','User is not the host for this registered guest.');
-			}
-			return docRef
-		} else { 
-			throw new functions.https.HttpsError('not-found','registeredGuest not found: '+registeredGuestUID);
-		}
-	})
-	.then( docRef => { 
-		return db.collection('registeredGuests').doc(registeredGuestUID).update({'canceled':true})
-		.then( docRef => { 
-			console.log('Successfully canceled registeredGuests: '+registeredGuestUID);
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.catch( error => { 
-		console.error(error); 
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.createServiceRequest = functions.https.onCall((data, context) => { 
-	const note = data.note || null;
-	const issueType = data.issueType || null;
-	const officeUID = data.officeUID || null;
-	const userUID = context.auth.uid || null;
-
-	if (officeUID === null || issueType === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID and issueType.');
-	} else if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User needs to be logged in');
-	}
-
-	// need to check if user has permission to submit service requests for this office 
-	// add serviceRequestUID to user's profile as well?
-
-	return db.collection('serviceRequests').add({
-		note: note, 
-		issueType: issueType, 
-		officeUID: officeUID, 
-		userUID: userUID, 
-		status: 'open', 
-		timestamp: admin.firestore.FieldValue.serverTimestamp(), 
-		canceled: false
-	})
-	.then( docRef => { 
-		const uid = docRef.id;
-		return db.collection('serviceRequests').doc(uid).update({"uid": uid})
-		.then( docRef => { 
-			return { "id": uid }
-		})
-	})
-	.catch( error => { 
-		console.error(error); 
-		throw new functions.https.HttpsError(error);
-	})
-
-});
-
-exports.getUsersServiceRequests = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null;
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User needs to be logged in.');
-	}
-	
-	var dict = {};
-	const open = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','open').where('canceled','==',false).orderBy('timestamp','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => { return x.data() });
-		const docs = docsData.map(x => { 
-			const officeUID = x.officeUID || null; 
-			if (officeUID !== null) { 
-				return db.collection('offices').doc(officeUID).get() 
-				.then(docRef => { 
-					const data = docRef.data() || null; 
-					x.office = data; 
-					return x
-				})
-				.catch( error => { 
-					throw new functions.https.HttpsError(error);
-				})
-			} else { 
-				return x
-			}
-		})
-
-		return Promise.all(docs)
-		.then( updatedDocs => { 
-			dict['open'] = updatedDocs; 
-			return
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	});
-
-	const pending = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','pending').where('canceled','==',false).orderBy('timestamp','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => { return x.data() });
-		const docs = docsData.map(x => { 
-			const officeUID = x.officeUID || null; 
-			if (officeUID !== null) { 
-				return db.collection('offices').doc(officeUID).get() 
-				.then(docRef => { 
-					const data = docRef.data() || null; 
-					x.office = data; 
-					return x
-				})
-				.catch( error => { 
-					throw new functions.https.HttpsError(error);
-				})
-			} else { 
-				return x
-			}
-		})
-
-		return Promise.all(docs)
-		.then( updatedDocs => { 
-			dict['pending'] = updatedDocs; 
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		}) 
-	});
-
-	const closed = db.collection('serviceRequests').where('userUID','==',userUID).where('status','==','closed').where('canceled','==',false).orderBy('timestamp','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => { return x.data() });
-		const docs = docsData.map(x => { 
-			const officeUID = x.officeUID || null; 
-			if (officeUID !== null) { 
-				return db.collection('offices').doc(officeUID).get() 
-				.then(docRef => { 
-					const data = docRef.data() || null; 
-					x.office = data; 
-					return x
-				})
-				.catch( error => { 
-					throw new functions.https.HttpsError(error);
-				})
-			} else { 
-				return x
-			}
-		})
-
-		return Promise.all(docs)
-		.then( updatedDocs => { 
-			dict['closed'] = updatedDocs; 
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	});
-
-	return Promise.all([open, pending, closed])
-	.then( res => { 
-		console.log(dict);
-		return dict
-	})
-	.catch( error => { 
-		console.error(error); 
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.cancelServiceRequest = functions.https.onCall((data, context) => { 
-	const serviceRequestID = data.serviceRequestID || null;
-	const userUID = context.auth.uid || null; 
-	// check permissions to see if user is allowed to cancel service request 
-
-	if (serviceRequestID === null || userUID === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','Must provide service request UID and user UID.');
-	}
-
-	return db.collection("serviceRequests").doc(serviceRequestID).update({'canceled':true})
-	.catch(error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-function getTitlefromServiceRequestType(type) { 
-	if (type === null) { 
-		return "Service Request Update"
-	} else if (type === 'coffeeRefill') { 
-		return 'Coffee needs to be restocked.'
-	} else if (type === 'deskRepair') { 
-		return "Desk needs to be repaired."
-	} else { 
-		return "Service Request Update"
-	}
-}
-
-exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => { 
-	const newValue = change.after.data(); 
+exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
+	const newValue = change.after.data();
 	const oldValue = change.before.data();
 	const hostUID = newValue.userUID || null;
-	const issueType = newValue.issueType || null; 
+	const issueType = newValue.issueType || null;
 
 	if (newValue.status !== oldValue.status) {
-		if (hostUID === null) { 
-			return 
+		if (hostUID === null) {
+			return
 		}
 		return db.collection('users').doc(hostUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
+		.then( docRef => {
+			if (docRef.exists) {
 				const data = docRef.data();
-				const registrationTokens = data.registrationToken || null; 
+				const registrationTokens = data.registrationToken || null;
 
 				var notBody = ""
-				if (newValue.status === "open") { 
+				if (newValue.status === "open") {
 					notBody = "We have received your request and will start working on it asap."
 				} else if (newValue.status === "pending")  {
 					notBody = "We have started working on your request."
@@ -1547,14 +1261,14 @@ exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('s
 				data.notificationTitle = notificationTitle
 				data.notificationBody = notBody;
 
-				 registrationTokens.forEach( x => { 
+				 registrationTokens.forEach( x => {
 					var message = {
 						"token" : x,
 						"notification" : {
 						    "title" : notificationTitle,
-						    "body" : notBody, 
-						 }, 
-						 "data": { 
+						    "body" : notBody,
+						 },
+						 "data": {
  							"type" : "serviceRequestUpdate",
 						    'requestUID': context.params.serviceRequestID
 						 }
@@ -1564,7 +1278,7 @@ exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('s
 					  .then((response) => {
 					    // Response is a message ID string.
 					    console.log('Successfully sent message:', response);
-					    return 
+					    return
 					  })
 					  .catch((error) => {
 					    console.error(error);
@@ -1573,1103 +1287,95 @@ exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('s
 				});
 
 				 return data;
-			} else { 
+			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
-			}   
-		}). then ( serviceRequestData => { 
+			}
+		}). then ( serviceRequestData => {
 			console.log('starting adding notifications');
-			const dataDict = { 'serviceRequestID': context.params.serviceRequestID, 'hostUID': hostUID, 'issueType': issueType }; 
+			const dataDict = { 'serviceRequestID': context.params.serviceRequestID, 'hostUID': hostUID, 'issueType': issueType };
 			return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
 				type: 'serviceRequestUpdate',
 				readStatus: false,
-				data: dataDict, 
+				data: dataDict,
 				title: serviceRequestData.notificationTitle,
 				body: serviceRequestData.notificationBody,
 				timestamp: new Date(new Date().toUTCString())
 			})
-			.then(docRef => { 
+			.then(docRef => {
 				console.log('did add notifications');
 				return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError(error);
 			})
 		})
 	}
 });
 
-exports.findAvailableConferenceRooms = functions.https.onCall((data, context) => { 
-	const amenities = data.amenities || null;
-	const officeUID = data.officeUID || null;
-	const capacity = data.capacity || null; 
-	var startDate = new Date(data.startDate) || null;
-	var duration = data.duration || null;
-
-	if (startDate !== null) { 
-		if (startDate < (new Date((new Date().getMinutes() - (5*6000))))) {  // 5 minute differential * 6000 milliseconds/second
-			throw new functions.https.HttpsError('invalid-arguments','Can not provide a start date in the past.')
-		}
+function getTitlefromServiceRequestType(type) {
+	if (type === null) {
+		return "Service Request Update"
+	} else if (type === 'coffeeRefill') {
+		return 'Coffee needs to be restocked.'
+	} else if (type === 'deskRepair') {
+		return "Desk needs to be repaired."
+	} else {
+		return "Service Request Update"
 	}
-
-	// Get all relevant conference rooms first 
-	var query = db.collection('conferenceRooms');
-	if (officeUID !== null) { 
-		query = query.where('officeUID','array-contains',officeUID).where('active','==',true).where('reserveable','==',true);
-	} else { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
-	}
-
-	if (capacity !== null) { 
-		query = query.where('capacity','>=',capacity);
-	}
-
-	return query.get()
-	.then( docSnapshots => { 
-		var docsData = docSnapshots.docs.map( x => { return x.data() });
-		var updatedDocsData = docsData; 
-
-		// Filter out all conference rooms that do not have all the requested amenities 
-		if (amenities !== null) {
-			updatedDocsData = docsData = docsData.filter( room => {
-				const currAmenities = room.amenities; // amenities list for conference room
-				for(var j=0; j<amenities.length; j++) { 
-					if (currAmenities.includes(amenities[j]) === false) { 
-						return false 
-					}
-				}
-				return true 
-			});	 
-		}
-		return updatedDocsData
-	})
-	.then( confRoomsData => { 
-
-		if (startDate === null && duration === null) { 
-			// fix this to just return all conference rooms and their reservations
-			return confRoomsData;
-		} else if (startDate !== null && duration === null) { 
-			duration = 15; 
-		} else if (startDate === null && duration !== null) {
-			// fix this so that it shows all conference rooms on same day with openings of min duration length
-			startDate = new Date();
-		} 
-		// check that endDate is correct 
-		var endDate = new Date(startDate); 
-		endDate.setMinutes( endDate.getMinutes() + duration );
-
-		// Filter out rooms that have conflicts 
-		var promises = confRoomsData.map( y => {  
-			const uid = y.uid;
-
-			return db.collection('conferenceRoomReservations').where('roomUID','==',uid).where('endDate','>=',startDate).get()
-			.then( docSnapshots => { 
-				const docData = docSnapshots.docs.map( x => x.data());
-				var conflicts = docData.filter( x => { 
-					// check if startDate of existing res is less than endDate of new res
-					const exStartDate = x.startDate.toDate();
-					const check = (exStartDate < endDate); 
-					return check
-				})
-
-				if (conflicts.length === 0) { 
-					return y
-				}
-				return {}
-			})
-			.catch( error => { 
-				console.error(error);
-				throw new functions.https.HttpsError(error);
-			})
-		});
-
-		return Promise.all(promises)
-		.then( data => { 
-			const updatedData = data.filter( x => { 
-				return !(Object.keys(x).length === 0)
-			})
-			return updatedData;
-		})
-		.catch(error => { 
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-
-	})
-	.then( updatedRoomsData => { 
-		console.log(updatedRoomsData);
-		var promises = updatedRoomsData.map(x => { 
-			const officeUIDs = x.officeUID; 
-			return getExpandedOfficeData(officeUIDs)
-			.then( officeData => { 
-				x.offices = officeData;
-				return x
-			})
-			.catch(error => { 
-				throw new functions.https.HttpsError(error);
-			})
-		});
-
-		return Promise.all(promises)
-		.then( finalRoomData => { 
-			console.log(finalRoomData);
-			return finalRoomData
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})	
-});
-
-exports.getReservationsForConferenceRoom = functions.https.onCall((data, context) => { 
-	const givenStartDate = new Date(data.startDate) || null;
-	const givenEndDate = new Date(data.endDate) || null; 
-	const roomUID = data.roomUID || null; 
-
-	if ((givenStartDate === null) || (givenEndDate === null) || (roomUID === null)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide a startDate, endDate, and roomUID')
-	}
-
-	return db.collection('conferenceRoomReservations').where('roomUID','==',roomUID).where('endDate','>=',givenStartDate).get()
-	.then( docSnapshots => { 
-		const docData = docSnapshots.docs.map( x => x.data());
-		return docData.filter( x => { 
-			// check if startDate of existing res is less than endDate of new res
-			const exStartDate = x.startDate.toDate();
-			return !(exStartDate > givenEndDate); 
-		})
-	})
-	.then( docData => {  
-		return docData.map(x => { 
-			return {"uid": x.uid, "startDate": x.startDate, "endDate": x.endDate, "roomUID": x.roomUID}
-		})
-	})
-});
-
-function getUserData(userUIDs) { 
-	if ((userUIDs === null) || (userUIDs.length === 0)) { 
-		return
-	}
-	return userUIDs.map(x => { 
-		return db.collection('users').doc(x).get() 
-		.then( docRef => { 
-			if (docRef.exists) { 
-				return docRef.data() 
-			} else { 
-				return {'uid':x }
-			}
-		})
-	})
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
 }
 
-// add location to call
-// add proper timezone 
-function addEvent(event, auth) {
-    return new Promise(function(resolve, reject) {
-        calendar.events.insert({
-            auth: auth,
-            calendarId: 'primary',
-            sendUpdates:'all',
-            resource: {
-            	'location': event.location,
-                'summary': event.eventName,
-                'description': event.description,
-                'start': {
-                    'dateTime': event.startTime,
-                    'timeZone': TIME_ZONE,
-                },
-                'end': {
-                    'dateTime': event.endTime,
-                    'timeZone': TIME_ZONE,
-                },
-                'guestsCanModify': true, 
-                'guestsCanInviteOthers': true, 
-                'attendees': event.attendees
-            },
-        }, (err, res) => {
-            if (err) {
-                console.log('Rejecting because of error');
-                reject(err);
-            } else { 
-            	console.log('Request successful');
-            	resolve(res.data);
-            }
-        });
-    });
-}
 
-function getExpandedOfficeData(officeUIDs) { 
-
-		// var officePromises = updatedRoomData.map(x => { 
-			// const officeUIDs = x.officeUID; 
-			var officePromises = officeUIDs.map( y => { 
-				return db.collection('offices').doc(y).get() 
-				.then( docRef => { 
-					if (docRef.exists) { 
-						return docRef.data();
-					} else { 
-						return {"officeUID": y};
-					}
-				})
-				// .then( officeData => { 
-				// 	const buildingUID = officeData.buildingUID || null;
-				// 	if (buildingUID === null) { 
-				// 		console.log('Could not find building for office.');
-				// 		return y
-				// 	}
-
-				// 	return db.collection('buildings').doc(buildingUID).get()
-				// 	.then(docRef => { 
-				// 		if (docRef.exists) { 
-				// 			y.building = docRef.data() 
-				// 		}
-				// 		return y
-				// 	})
-				// })
-				.catch(error => { 
-					throw new functions.https.HttpsError(error);
-				})
-			});
-
-			return Promise.all(officePromises)
-			.then( officeData => { 
-				var promises = officeData.map( x => { 
-					const buildingUID = x.buildingUID;
-					return db.collection('buildings').doc(buildingUID).get()
-					.then( docRef => { 
-						if (docRef.exists) { 
-							const data = docRef.data();
-							x.building = data; 
-						}
-						return x
-					})
-					.catch( error => { 
-						throw new functions.https.HttpsError(error);
-					})
-				});
-
-				return Promise.all(promises)
-				.then( newOfficeData => { 
-					return newOfficeData;
-				})
-				.catch(error => {
-					console.error(error);
-					throw new functions.https.HttpsError(error);
-				})
-			})
-			.catch(error => { 
-				throw new functions.https.HttpsError(error);
-			})
-}
-
-exports.createConferenceRoomReservation = functions.https.onCall((data, context) => { 
-
-	const startTime = new Date(data.startTime) || null;
-	const endTime = new Date(data.endTime) || null; 
-	const conferenceRoomUID = data.conferenceRoomUID || null;
-	const reservationTitle = data.reservationTitle || "Room Reservation";
-	const note = data.note || null;
-	var attendees = data.attendees || [];
-	const userUID = context.auth.uid || null;
-	const userEmail = context.auth.token.email || null; 
-	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
-
-	
-	if ((startTime === null) || (endTime === null) || (conferenceRoomUID === null)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, and conferenceRoomUID.');
-	}
-	const currentDate = new Date(new Date - (5 * 60000));
-	if ((startTime <= currentDate) || (endTime <= currentDate)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Cannot make a reservation in the past');
-	}
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
-	}
-		
-	// check to make sure user can book conference room??????  
-	return db.collection('users').doc(userUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			const offices = data.offices || null;
-			if (offices === null) { 
-				throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
-			}
-			return offices 
-		} else { 
-			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
-		}
-	})
-	.then(userOffices => { 
-		return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
-				const data = docRef.data();
-
-				const reserveable = data.reserveable;
-				const active = data.active;
-				if ((reserveable === false) || (active === false)) { 
-					throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
-				}
-
-				const confRoomOfficeUIDs = data.officeUID || null;
-				if (confRoomOfficeUIDs === null) { 
-					throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
-				}
-
-				var unionFound = false;
-				userOffices.forEach( x => { 
-					if (confRoomOfficeUIDs.includes(x) === true) { 
-						unionFound = true ;
-					}
-				});
-
-				if (unionFound === false) { 
-					throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
-				} else { 
-					return 
-				}
-
-			} else { 
-				throw new functions.https.HttpsError('not-found','Unable to find conference room in database.');
-			}
-		})
-	})
-	.then( x => { 
-
-		// check that conference room is free at that time and reservable 
-		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
-		.then( docSnapshots => { 
-			const docData = docSnapshots.docs.map( x => x.data());
-			var conflicts = docData.filter( x => { 
-				// check if startDate of existing res is less than endDate of new res
-				const exStartDate = x.startDate.toDate();
-				const check = (exStartDate < endTime); 
-				return check
-			});
-
-			if (conflicts.length !== 0) { 
-				throw new functions.https.HttpsError('permission-denied','Reservations already exists in time frame for conference room.');
-			} 
-			return
-		})
-	})
-	.then( x => { 
-		// create conference room reservation 
-		return db.collection('conferenceRoomReservations').add({ 
-			title: reservationTitle,
-			note: note, 
-			roomUID: conferenceRoomUID, 
-			startDate: startTime, 
-			endDate: endTime, 
-			userUID: userUID, 
-			attendees: attendees.map( x => x.uid ), 
-			canceled: false 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error); 
-		})
-	})
-	.then(docRef => { 
-
-		const uid = docRef.id; 
-		if (uid === null) { 
-			throw new functions.https.HttpsError('internal', 'Unable to add new reservation to database.');
-		}
-
-		return db.collection('conferenceRoomReservations').doc(uid).update({"uid":uid})
-		.then(docRef => { 
-			return 
-		})
-		.catch(error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.then( x => { 
-		if (shouldCreateCalendarEvent === false) { 
-			console.log("Not creating calendar event.");
-			return 
-		}
-
-		return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
-		.then( docRef => { 
-			if (docRef.exists) { 
-				const data = docRef.data(); 
-				const address = data.address || null; 
-				return address
-			}
-			return null
-		})
-		.then( address => { 
-
-			if (userEmail !== null) { 
-				attendees.push({"email": userEmail});
-			}
-
-			var location = ""
-			if (address !== null) { 
-				location = address; 
-			}
-
-			// create calendar invite 
-			const eventData = {
-		        eventName: reservationTitle	,
-		        description: note,
-		        startTime: startTime,
-		        endTime: endTime, 
-		        attendees: attendees,
-		        location: location
-	    	};
-	    	const oAuth2Client = new OAuth2(
-		    	googleCredentials.web.client_id,
-		        googleCredentials.web.client_secret,
-		        googleCredentials.web.redirect_uris[0]
-	    	);
-
-		    oAuth2Client.setCredentials({
-		        refresh_token: googleCredentials.refresh_token
-		    });
-
-	    	return addEvent(eventData, oAuth2Client).then(data => {
-	        	return data;
-	    	}).catch(err => {
-	        	console.error('Error adding event: ' + err.message); 
-	        	throw new functions.https.HttpsError(err);
-	   		});
-		})
-	})
-	.catch(error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.getEmployeesForOffice = functions.https.onCall((data, context) => { 
+exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	// check to see that user has permission (is part of office)
 
-	const officeUID = data.officeUID || null; 
+	const officeUID = data.officeUID || null;
 	const userUID = context.auth.uid || null;
 
-	if (officeUID === null) { 
+	if (officeUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
 	}
-	if (userUID === null) { 
+	if (userUID === null) {
 		throw new functions.https.HttpsError('invalid-arguments','User must be logged in.');
 	}
 
 	return db.collection('offices').doc(officeUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
+	.then( docRef => {
+		if (docRef.exists) {
+			const data = docRef.data();
 			const employees = data.employees;
-			const filteredEmployees = employees.filter(x => { 
+			const filteredEmployees = employees.filter(x => {
 				return (x !== userUID)
 			});
-			return filteredEmployees 
-		} else { 
+			return filteredEmployees
+		} else {
 			throw new functions.https.HttpsError('not-found','Could not find office in database.');
 		}
 	})
-	.then( employees => { 
-		var promises = employees.map(x => { 
+	.then( employees => {
+		var promises = employees.map(x => {
 			return db.collection('users').doc(x).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
+			.then( docRef => {
+				if (docRef.exists) {
 					return docRef.data()
-				} else { 
+				} else {
 					return x;
 				}
 			})
-			.catch( error => { 
+			.catch( error => {
 				throw new functions.https.HttpsError(error);
 			})
 		})
 
 		return Promise.all(promises)
-		.then( employeeDataArray => { 
+		.then( employeeDataArray => {
 			return employeeDataArray
 		})
-		.catch( error => { 
+		.catch( error => {
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.catch( error => { 
+	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 });
-
-exports.getUsersNotifications = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null; 
-
-	if (userUID === null) {
-		throw new functions.https.HttpsError('invalid-arguments', 'User must be logged in.');
-	}
-
-	return db.collection('userNotifications').doc(userUID).collection('notifications').orderBy('timestamp','desc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => x.data());
-		return docsData;
-	})
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.getAllConferenceRoomsForUser = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null; 
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('invalid-arguments', 'User must be logged in');
-	}
-
-	return db.collection('users').doc(userUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			const officeUIDs = data.offices || null; 
-			return officeUIDs; 
-		} else { 
-			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
-		}
-	})
-	.then( officeUIDs => { 
-
-		var conferenceRooms = [];
-
-	  	var promises = officeUIDs.map( x => { 
-	  		return db.collection('conferenceRooms').where('officeUID','array-contains',x).where('reserveable','==',true).where('active','==',true).get()
-	  		.then( docSnapshots => { 
-	  			const docsData = docSnapshots.docs.map( x => x.data() );
-	  			var roomPromises = docsData.map( x => { 
-	  				
-	  				return getExpandedOfficeData(x.officeUID)
-	  				.then( officeData => { 
-	  					x.offices = officeData; 
-	  					conferenceRooms.push(x);
-	  					return 
-	  				})
-	  				.catch(error => { 
-						throw new functions.https.HttpsError(error);
-	  				})
-
-	  			})
-
-	  			return Promise.all(roomPromises)
-	  			.catch(error => { 
-	  				throw new functions.https.HttpsError(error);
-	  			})
-	  		})
-	  		.catch( error => { 
-	  			throw new functions.https.HttpsError(error);
-			})
-	  	})
-
-	  	return Promise.all(promises)
-	  	.then( res => { 
-	  		return conferenceRooms
-	  	})
-	  	.catch( error => { 
-	  		throw new functions.https.HttpsError(error);
-	  	})
-
-	})
-	.catch(error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null;
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User must be logged in');
-	}
-
-	var dict = {};
-	const upcoming = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
-	.then( docSnapshots => {
-		
-		const docsData = docSnapshots.docs.map( x => x.data() );
-		var promises = docsData.map( x => { 
-			return db.collection('conferenceRooms').doc(x.roomUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					x.conferenceRoom = docRef.data();
-					return x
-				}
-				return x
-			})
-			
-		});
-
-		return Promise.all(promises)
-		.then( reservations => { 
-			dict["upcoming"] = reservations;
-			return 
-		})
-		.catch(error => { 
-			throw new functions.https.HttpsError(error);
-		})
-
-	});
-
-	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','desc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => x.data() );
-		var promises = docsData.map( x => { 
-
-			return db.collection('conferenceRooms').doc(x.roomUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					x.conferenceRoom = docRef.data();
-				}
-				return x
-			})
-				
-		});
-
-		return Promise.all(promises)
-		.then( reservations => { 
-			dict["past"] = reservations;
-			return 
-		})
-		.catch(error => { 
-			throw new functions.https.HttpsError(error);
-		})
-
-	});
-
-	return Promise.all([upcoming, past])
-	.then( x => { 
-		const updatedUpcomingReservations = dict.upcoming;
-		var promises = updatedUpcomingReservations.map( x => { 
-			const room = x.conferenceRoom;
-			const officeUIDs = room.officeUID;
-			return getExpandedOfficeData(officeUIDs)
-	  		.then( officeData => { 
-	  			x.conferenceRoom.offices = officeData; 
-	  			return x
-	  		})
-	  		.catch(error => { 
-				throw new functions.https.HttpsError(error);
-	  		})
-		})
-
-		return Promise.all(promises)
-		.then( finalUpcomingReservations => { 
-			dict["upcoming"] = finalUpcomingReservations;
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-
-	})
-	.then( x => { 
-		const updatedPastReservations = dict.past;
-		var promises = updatedPastReservations.map( x => { 
-			const room = x.conferenceRoom;
-			const officeUIDs = room.officeUID;
-			return getExpandedOfficeData(officeUIDs)
-	  		.then( officeData => { 
-	  			x.conferenceRoom.offices = officeData; 
-	  			return x
-	  		})
-	  		.catch(error => { 
-				throw new functions.https.HttpsError(error);
-	  		})
-		})
-
-		return Promise.all(promises)
-		.then( finalPastReservations => { 
-			dict["past"] = finalPastReservations;
-			return 
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-
-	})
-	.then( x => { 
-		const upcoming = dict.upcoming;  
-		var upcomingPromises = upcoming.map( x => { 
-			const userUID = x.userUID || null;
-			if (userUID === null) {
-				return x
-			}
-			return db.collection('users').doc(x.userUID).get()
-			.then(docRef => {
-				if (docRef.exists) { 
-					x.host = docRef.data(); 
-				}
-				return x
-			})
-		})
-
-		return Promise.all(upcomingPromises)
-		.then( upcomingData => { 
-			dict["upcoming"] = upcomingData; 
-			return 
-		})
-	})
-	.then(x => { 
-		const past = dict.past; 
-		var pastPromises = past.map( x => { 
-			const userUID = x.userUID || null;
-			if (userUID === null) {
-				return x
-			}
-			return db.collection('users').doc(x.userUID).get()
-			.then(docRef => {
-				if (docRef.exists) { 
-					x.host = docRef.data(); 
-				}
-				return x
-			})
-		})
-
-		return Promise.all(pastPromises)
-		.then( pastData => { 
-			dict["past"] = pastData; 
-			return 
-		})
-	})
-	.then( x => { 
-		const upcoming = dict.upcoming;  
-		var upcomingPromises = upcoming.map( x => { 
-			const attendees = x.attendees || null;
-			if ((attendees === null) || (attendees.length === 0)) {
-				return x
-			}
-			return getUserData(attendees)
-			.then( userData => { 
-				x.attendees = userDate
-				return x
-			})
-		})
-
-		return Promise.all(upcomingPromises)
-		.then( upcomingData => { 
-			dict["upcoming"] = upcomingData; 
-			return 
-		})
-	})
-	.then(x => { 
-		const past = dict.past;  
-		var pastPromises = past.map( x => { 
-			const attendees = x.attendees || null;
-			if ((attendees === null) || (attendees.length === 0)) {
-				return x
-			}
-			return getUserData(attendees)
-			.then( userData => { 
-				x.attendees = userDate
-				return x
-			})
-		})
-
-		return Promise.all(pastPromises)
-		.then( pastData => { 
-			dict["past"] = pastData; 
-			return 
-		})
-	})
-	.then( x => { 
-		return dict; 
-	})
-	.catch( error => { 
-		console.log(error);
-		throw new functions.https.HttpsError(error);
-	})
-
-});
-
-exports.updateConferenceRoomReservation = functions.https.onCall((data, context) => { 
-	const reservationUID = data.reservationUID || null;
-	const userUID = context.auth.uid || null; /// check to see that user matches one on reservation? 
-	const startTime = new Date(data.startTime) || null;
-	const endTime = new Date(data.endTime) || null;
-	const title = data.reservationTitle || null; 
-	const note = data.note || null; 
-	const attendees = data.attendees || null;
-
-	const dict = {"startTime": startTime, "endTime": endTime, "title": title, "note": note, "attendees": attendees };
-
-	if ((startTime === null) || (endTime === null)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime and endTime.');
-	}
-	const currentDate = new Date(new Date - (5 * 60000));
-	if ((startTime <= currentDate) || (endTime <= currentDate)) { 
-		throw new functions.https.HttpsError('invalid-arguments','Cannot make a reservation in the past');
-	}
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
-	}
-		
-	// check to make sure user can book conference room??????  
-	return db.collection('users').doc(userUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			const offices = data.offices || null;
-			if (offices === null) { 
-				throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
-			}
-			return offices 
-		} else { 
-			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
-		}
-	})
-	.then(userOffices => { 
-
-		var promise = db.collection('conferenceRoomReservations').doc(reservationUID).get() 
-		.then( docRef => { 
-			if (docRef.exists) { 
-				const data = docRef.data() 
-				const conferenceRoomUID = data.roomUID || null;
-				if (conferenceRoomUID === null) { 
-					throw new functions.https.HttpsError('not-found','Unable to find conference room linked to reservation.');
-				}
-				return conferenceRoomUID
-			} else { 
-				throw new functions.https.HttpsError('not-found','Unable to find conference room reservation.');
-			}
-		})
-
-		return Promise.all([promise])
-		.then(conferenceRoomUID => {
-			console.log(conferenceRoomUID[0]);
-			const roomUID = conferenceRoomUID[0] || null;
-			if (roomUID === null) { 
-				throw new functions.https.HttpsError('not-found','Unable to find conference room linked to reservation.');
-			}
-
-			return db.collection('conferenceRooms').doc(roomUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					const data = docRef.data();
-
-					const reserveable = data.reserveable;
-					const active = data.active;
-					if ((reserveable === false) || (active === false)) { 
-						throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
-					}
-
-					const confRoomOfficeUIDs = data.officeUID || null;
-					if (confRoomOfficeUIDs === null) { 
-						throw new functions.https.HttpsError('permission-denied','This conference room is not reserveable.');
-					}
-
-					var unionFound = false;
-					userOffices.forEach( x => { 
-						if (confRoomOfficeUIDs.includes(x) === true) { 
-							unionFound = true ;
-						}
-					});
-
-					if (unionFound === false) { 
-						throw new functions.https.HttpsError('permission-denied','User is not allowed to reserve this conference room.');
-					} else { 
-						return conferenceRoomUID
-					}
-
-				} else { 
-					throw new functions.https.HttpsError('not-found','Unable to find conference room in database.');
-				}
-			})
-		})
-	})
-	.then( conferenceRoomUID => { 
-		// below code checks that conference room is free at that time and reservable 
-		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
-		.then( docSnapshots => { 
-			const docData = docSnapshots.docs.map( x => x.data());
-			var conflicts = docData.filter( x => { 
-				// check if startDate of existing res is less than endDate of new res
-				const exStartDate = x.startDate.toDate();
-				const check = (exStartDate < endTime); 
-				return check
-			});
-
-			if (conflicts.length !== 0) { 
-				throw new functions.https.HttpsError('permission-denied','Reservations already exists in time frame for conference room.');
-			} 
-			return
-		})
-
-	})
-	.then( x => { 
-		return db.collection('conferenceRoomReservations').doc(reservationUID).update(dict)
-		.catch( error => { 
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-	})
-});
-
-exports.getUsersReservationsForToday = functions.https.onCall((data, context) => { 
-	const userUID = context.auth.uid || null;
-
-	if (userUID === null) { 
-		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
-	}
-
-	var reservations = []; 
-	var todayStart = new Date(new Date().toUTCString());
-	
-	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',todayStart).where('canceled','==',false).orderBy('startDate','asc').get()
-	.then( docSnapshots => { 
-		const docsData = docSnapshots.docs.map( x => x.data() );
-		return docsData
-	}) 
-	.then( docsData => { 
-		const filteredData = docsData.filter(x => { 
-			const startDate = x.startDate.toDate(); 
-			var todayEnd = new Date(new Date().toUTCString());
-			todayEnd.setHours(23,59,59,999);
-			return (startDate <= todayEnd)
-		});
-		const tempArr = reservations.concat(filteredData);
-		reservations = tempArr;
-		return
-	})
-	// var deskResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc')
-
-	return Promise.all([roomResQuery])
-	.then( x => { 
-		var promises = reservations.map( x => { 
-
-			return db.collection('conferenceRooms').doc(x.roomUID).get()
-			.then( docRef => { 
-				if (docRef.exists) { 
-					x.conferenceRoom = docRef.data();
-				}
-				return x
-			})
-				
-		});
-
-		return Promise.all(promises)
-		.then( reservations => { 
-			return reservations
-		})
-		.catch(error => { 
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.then( reservationData => { 
-		var promises = reservationData.map( x => { 
-			const room = x.conferenceRoom;
-			const officeUIDs = room.officeUID;
-			return getExpandedOfficeData(officeUIDs)
-	  		.then( officeData => { 
-	  			x.conferenceRoom.offices = officeData; 
-	  			return x
-	  		})
-	  		.catch(error => { 
-				throw new functions.https.HttpsError(error);
-	  		})
-		})
-
-		return Promise.all(promises)
-		.then( updatedReservationData => { 
-			return updatedReservationData
-		})
-		.catch( error => { 
-			throw new functions.https.HttpsError(error);
-		})
-
-	})
-	.then( reservationData => { 
-		var promises = reservationData.map( x => { 
-			const userUID = x.userUID || null;
-			if (userUID === null) {
-				return x
-			}
-			return db.collection('users').doc(x.userUID).get()
-			.then(docRef => {
-				if (docRef.exists) { 
-					x.host = docRef.data(); 
-				}
-				return x
-			})
-		})
-
-		return Promise.all(promises)
-		.then( updatedReservationData => { 
-			return updatedReservationData
-		})
-	})
-	.then( reservationData => { 
-		var promises = reservationData.map( x => { 
-			const attendees = x.attendees || null;
-			if ((attendees === null) || (attendees.length === 0)) {
-				return x
-			}
-			return getUserData(attendees)
-			.then( userData => { 
-				x.attendees = userDate
-				return x
-			})
-		})
-
-		return Promise.all(promises)
-		.then( finalReservationData => { 
-			return finalReservationData
-		})
-	})
-	.catch( error => { 
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-
-});
-
-exports.cancelRoomReservation = functions.https.onCall((data, context) => { 
-	const reservationUID = data.reservationUID || null; 
-	const userUID = context.auth.uid || null; 
-
-	if (reservationUID === null) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide a reservationUID.');
-	}
-
-	return db.collection('conferenceRoomReservations').doc(reservationUID).get()
-	.then( docRef => { 
-		if (docRef.exists) { 
-			const data = docRef.data(); 
-			const reservationUserUID = data.userUID || null; 
-			if (reservationUserUID === null) {
-				throw new functions.https.HttpsError('permission-denied','Reservation does not have a host UID.');
-			}
-			if (reservationUserUID !== userUID) { 
-				throw new functions.https.HttpsError('permission-denied','User does not have permission to modify this reservation.');
-			}
-
-			return 
-		} else { 
-			throw new functions.https.HttpsError('not-found','Unable to find room reservation in database.');
-		}
-	})
-	.then( x => { 
-		return db.collection('conferenceRoomReservations').doc(reservationUID).update({'canceled': true});
-	})
-	.catch( error => { 
-		console.error(error); 
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-
-
