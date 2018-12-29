@@ -47,7 +47,7 @@ exports.addEventToCalendar = function(event) {
             },
         }, (err, res) => {
             if (err) {
-                console.log('Rejecting because of error');
+                console.error(err);
                 reject(err);
             } else {
             	console.log('Request successful');

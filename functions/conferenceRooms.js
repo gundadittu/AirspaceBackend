@@ -300,7 +300,6 @@ exports.findAvailableConferenceRooms = function(data, context, db) {
 
 	})
 	.then( updatedRoomsData => {
-		console.log(updatedRoomsData);
 		var promises = updatedRoomsData.map(x => {
 			const officeUIDs = x.officeUID;
 			return helperFunctions.getExpandedOfficeData(officeUIDs, db)
@@ -315,7 +314,6 @@ exports.findAvailableConferenceRooms = function(data, context, db) {
 
 		return Promise.all(promises)
 		.then( finalRoomData => {
-			console.log(finalRoomData);
 			return finalRoomData
 		})
 		.catch( error => {
@@ -592,7 +590,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 		return dict;
 	})
 	.catch( error => {
-		console.log(error);
+		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 }

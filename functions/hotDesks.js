@@ -213,13 +213,15 @@ exports.findAvailableHotDesks = function(data, context, db) {
 	// Get all relevant conference rooms first
 	var query = db.collection('hotDesks');
 	if (officeUID !== null) {
-		query = query.where('officeUID','array-contains',officeUID).where('active','==',true).where('reserveable','==',true);
+		query = query.where('officeUIDs','array-contains',officeUID).where('active','==',true).where('reserveable','==',true);
 	} else {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
 	}
 
 	return query.get()
-	.then( hotDesksData => {
+	.then( docSnapshots => {
+		var docsData = docSnapshots.docs.map( x => { return x.data() });
+		var hotDesksData = docsData;
 
 		if (startDate === null && duration === null) {
 			// fix this to just return all conference rooms and their reservations
@@ -238,7 +240,7 @@ exports.findAvailableHotDesks = function(data, context, db) {
 		var promises = hotDesksData.map( y => {
 			const uid = y.uid;
 
-			return db.collection('hotDeskReservations').where('roomUID','==',uid).where('endDate','>=',startDate).get()
+			return db.collection('hotDeskReservations').where('deskUID','==',uid).where('endDate','>=',startDate).get()
 			.then( docSnapshots => {
 				const docData = docSnapshots.docs.map( x => x.data());
 				var conflicts = docData.filter( x => {
@@ -273,7 +275,6 @@ exports.findAvailableHotDesks = function(data, context, db) {
 
 	})
 	.then( updatedDesksData => {
-		console.log(updatedDesksData);
 		var promises = updatedDesksData.map(x => {
 			const officeUIDs = x.officeUIDs;
 			if ((officeUIDs === null) || (officeUIDs.length === 0)) {
@@ -291,7 +292,6 @@ exports.findAvailableHotDesks = function(data, context, db) {
 
 		return Promise.all(promises)
 		.then( finalDeskData => {
-			console.log(finalDeskData);
 			return finalDeskData
 		})
 		.catch( error => {
@@ -326,7 +326,7 @@ exports.getAllHotDesksForUser = function(data, context, db) {
 		var hotDesks = [];
 
 	  	var promises = officeUIDs.map( x => {
-	  		return db.collection('hotDesks').where('officeUID','array-contains',x).where('reserveable','==',true).where('active','==',true).get()
+	  		return db.collection('hotDesks').where('officeUIDs','array-contains',x).where('reserveable','==',true).where('active','==',true).get()
 	  		.then( docSnapshots => {
 	  			const docsData = docSnapshots.docs.map( x => x.data() );
 	  			var roomPromises = docsData.map( x => {
@@ -350,7 +350,7 @@ exports.getAllHotDesksForUser = function(data, context, db) {
 	  		})
 	  		.catch( error => {
 	  			throw new functions.https.HttpsError(error);
-			})
+				})
 	  	})
 
 	  	return Promise.all(promises)
@@ -437,7 +437,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 			var promises = updatedUpcomingReservations.map( x => {
 				const desk = x.hotDesk;
 				const officeUIDs = desk.officeUIDs;
-				return getExpandedOfficeData(officeUIDs)
+				return helperFunctions.getExpandedOfficeData(officeUIDs, db)
 		  		.then( officeData => {
 		  			x.hotDesk.offices = officeData;
 		  			return x
@@ -462,7 +462,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 			var promises = updatedPastReservations.map( x => {
 				const desk = x.hotDesk;
 				const officeUIDs = desk.officeUIDs;
-				return getExpandedOfficeData(officeUIDs)
+				return helperFunctions.getExpandedOfficeData(officeUIDs, db)
 		  		.then( officeData => {
 		  			x.hotDesk.offices = officeData;
 		  			return x
@@ -529,7 +529,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 		return dict;
 	})
 	.catch( error => {
-		console.log(error);
+		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 }

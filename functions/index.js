@@ -173,12 +173,12 @@ exports.createUser = functions.https.onCall((data, context) => {
 			})
 			.catch( error => {
 				// fix error
-				console.log(error)
+				console.error(error)
 				throw new functions.https.HttpsError('internal', 'Failed to add user data to database.');
 		  })
 	}).catch( error =>  {
 		// fix error
-		console.log(error)
+		console.error(error)
 		throw new functions.https.HttpsError('failed-precondition', 'Failed to create user.');
 	})
 });
@@ -1149,7 +1149,7 @@ exports.createServiceRequest = functions.https.onCall((data, context) => {
 });
 
 exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
-	serviceRequestFunctions.getUsersServiceRequests(data, context, db);
+	return serviceRequestFunctions.getUsersServiceRequests(data, context, db);
 });
 
 exports.cancelServiceRequest = functions.https.onCall((data, context) => {
@@ -1313,15 +1313,36 @@ exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('s
 });
 
 function getTitlefromServiceRequestType(type) {
-	if (type === null) {
-		return "Service Request Update"
-	} else if (type === 'coffeeRefill') {
-		return 'Coffee needs to be restocked.'
-	} else if (type === 'deskRepair') {
-		return "Desk needs to be repaired."
-	} else {
-		return "Service Request Update"
-	}
+
+			if (type === 'furnitureRepair') {
+				return "Furniture Repair"
+			} else if (type === "brokenFixtures") {
+				return "Fixture Repair"
+			} else if (type === "lightsNotWorking") {
+				return "Lights Not Working"
+			} else if (type === 'waterDamageLeak') {
+				return "Water/Damage Leak"
+			} else if (type === 'brokenACHeating') {
+				return "Broken AC/Heating"
+			} else if (type === 'kitchenIssues') {
+				return "Kitchen Issues"
+			} else if (type === 'bathroomIssues') {
+				return "Bathroom Issues"
+			} else if (type === "damagedDyingPlants") {
+				return "Damaged/Dying Plants"
+			} else if (type === 'conferenceRoomHardware') {
+				return "Conference Room Hardware Issues"
+			} else if (type === "webMobileIssues") {
+				return "Web/Mobile App Issues"
+			} else if (type === 'furnitureMovingRequest') {
+				return "Furniture Moving Request"
+			} else if (type === 'printingIssues') {
+				return "Printing Issues"
+			} else if (type === 'wifiIssues') {
+				return "Wifi Issues"
+			} else if (type === 'other') {
+				return "Other"
+			}
 }
 
 
