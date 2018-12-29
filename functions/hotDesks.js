@@ -200,9 +200,7 @@ exports.getReservationsForHotDesk = function(data, context, db) {
 }
 
 exports.findAvailableHotDesks = function(data, context, db) {
-	const amenities = data.amenities || null;
 	const officeUID = data.officeUID || null;
-	const capacity = data.capacity || null;
 	var startDate = new Date(data.startDate) || null;
 	var duration = data.duration || null;
 
@@ -218,10 +216,6 @@ exports.findAvailableHotDesks = function(data, context, db) {
 		query = query.where('officeUID','array-contains',officeUID).where('active','==',true).where('reserveable','==',true);
 	} else {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
-	}
-
-	if (capacity !== null) {
-		query = query.where('capacity','>=',capacity);
 	}
 
 	return query.get()
