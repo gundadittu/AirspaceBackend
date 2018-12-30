@@ -20,7 +20,7 @@ exports.addEventToCalendar = function(event) {
       googleCredentials.web.redirect_uris[0]
   );
 
-  oAuth2Client.setCredentials({
+  auth.setCredentials({
       refresh_token: googleCredentials.refresh_token
   });
 

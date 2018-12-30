@@ -5,7 +5,7 @@ exports.getUsersReservationsForRange = function(data, context, db) {
 	const userUID = context.auth.uid || null;
 	const rangeStart = new Date(data.rangeStart) || null;
 	const rangeEnd = new Date(data.rangeEnd) || null;
-	
+
 	if (userUID === null) {
 		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
 	}
@@ -17,7 +17,7 @@ exports.getUsersReservationsForRange = function(data, context, db) {
 	var roomReservations = [];
 	var deskReservations = [];
 
-	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',rangeStart).where('startDate','<=',rangeEnd).where('canceled','==',false).orderBy('startDate','asc').get()
+	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('endDate','>=',rangeStart).where('endDate','<=',rangeEnd).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		console.log(docsData);
@@ -25,7 +25,7 @@ exports.getUsersReservationsForRange = function(data, context, db) {
 		return
 	})
 
-	var deskResQuery = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','>=',rangeStart).where('startDate','<=',rangeEnd).where('canceled','==',false).orderBy('startDate','asc').get()
+	var deskResQuery = db.collection('hotDeskReservations').where('userUID','==',userUID).where('endDate','>=',rangeStart).where('endDate','<=',rangeEnd).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		console.log(docsData);

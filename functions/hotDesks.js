@@ -79,7 +79,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 	.then( x => {
 
 		// check that hot desk is free at that time and reservable
-		return db.collection('hotDeskReservations').where('deskUID','==',hotDeskUID).where('endDate','>=',startTime).get()
+		return db.collection('hotDeskReservations').where('deskUID','==',hotDeskUID).where('endDate','>=',startTime).where('canceled','==',false).get()
 		.then( docSnapshots => {
 			const docData = docSnapshots.docs.map( x => x.data());
 			var conflicts = docData.filter( x => {
@@ -124,49 +124,61 @@ exports.createHotDeskReservation = function(data, context, db) {
 		})
 	})
 	.then( x => {
-		if (shouldCreateCalendarEvent === false) {
-			console.log("Not creating calendar event.");
-			return
-		}
+							if (shouldCreateCalendarEvent === false) {
+								console.log("Not creating calendar event.");
+								return
+							}
 
-		return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data();
-				const address = data.address || null;
-				return address
-			}
-			return null
-		})
-		.then( address => {
+							var userDict = [{"email":userEmail}];
+							var address = "";
+							var officeName = "";
+							var deskName = "";
+							return db.collection('hotDesks').doc(hotDeskUID).get()
+							.then( docRef => {
+								if (docRef.exists) {
+									const data = docRef.data();
+									deskName = data.name || "Hot Desk Reservation";
+								 	address = data.address || "";
+									const officeUID = data.officeUIDs[0] || null;
+									return officeUID
+								}
+								return
+							})
+							.then( officeUID => {
+								if (officeUID === null) {
+									return
+								}
+								return db.collection('offices').doc(officeUID).get()
+								.then( docRef => {
+									if (docRef.exists) {
+										const data = docRef.data();
+										officeName = data.name || "";
+									}
+									return
+								})
+							})
+							.then( x => {
+								// create calendar invite
+								const location =  officeName+", "+address;
+								const eventName = deskName+" Reservation";
+								const eventData = {
+											eventName: eventName,
+											description: "",
+											startTime: startTime,
+											endTime: endTime,
+											attendees: userDict,
+											location: location
+									};
 
-			if (userEmail !== null) {
-				attendees.push({"email": userEmail});
-			}
+									return googleCalendarFunctions.addEventToCalendar(eventData)
+									.then(data => {
+											return data;
+									}).catch(err => {
+											console.error('Error adding event: ' + err.message);
+											throw new functions.https.HttpsError(err);
+									});
 
-			var location = ""
-			if (address !== null) {
-				location = address;
-			}
-
-			// create calendar invite
-			const eventData = {
-		        eventName: reservationTitle	,
-		        description: note,
-		        startTime: startTime,
-		        endTime: endTime,
-		        attendees: attendees,
-		        location: location
-	    	};
-
-	    	return googleCalendarFunctions.addEventToCalendar(eventData)
-				.then(data => {
-	        	return data;
-	    	}).catch(err => {
-	        	console.error('Error adding event: ' + err.message);
-	        	throw new functions.https.HttpsError(err);
-	   		});
-		})
+							})
 	})
 	.catch(error => {
 		console.error(error);
@@ -183,7 +195,7 @@ exports.getReservationsForHotDesk = function(data, context, db) {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide a startDate, endDate, and roomUID')
 	}
 
-	return db.collection('hotDeskReservations').where('deskUID','==',deskUID).where('endDate','>=',givenStartDate).get()
+	return db.collection('hotDeskReservations').where('deskUID','==',deskUID).where('endDate','>=',givenStartDate).where('canceled','==',false).get()
 	.then( docSnapshots => {
 		const docData = docSnapshots.docs.map( x => x.data());
 		return docData.filter( x => {
@@ -240,7 +252,7 @@ exports.findAvailableHotDesks = function(data, context, db) {
 		var promises = hotDesksData.map( y => {
 			const uid = y.uid;
 
-			return db.collection('hotDeskReservations').where('deskUID','==',uid).where('endDate','>=',startDate).get()
+			return db.collection('hotDeskReservations').where('deskUID','==',uid).where('endDate','>=',startDate).where('canceled','==',false).get()
 			.then( docSnapshots => {
 				const docData = docSnapshots.docs.map( x => x.data());
 				var conflicts = docData.filter( x => {
@@ -377,7 +389,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 	}
 
 	var dict = {};
-	const upcoming = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
+	const upcoming = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).where('canceled','==',false).orderBy('startDate','asc').get()
 	.then( docSnapshots => {
 
 		const docsData = docSnapshots.docs.map( x => x.data() );
@@ -404,7 +416,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 
 	});
 
-	const past = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','desc').get()
+	const past = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','<',new Date()).where('canceled','==',false).orderBy('startDate','desc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		var promises = docsData.map( x => {
@@ -553,7 +565,6 @@ exports.cancelHotDeskReservation = function(data, context, db) {
 			if (reservationUserUID !== userUID) {
 				throw new functions.https.HttpsError('permission-denied','User does not have permission to modify this reservation.');
 			}
-
 			return
 		} else {
 			throw new functions.https.HttpsError('not-found','Unable to find room reservation in database.');
@@ -607,8 +618,13 @@ exports.updateHotDeskReservation = function(data, context) {
 		.then( docRef => {
 			if (docRef.exists) {
 				const data = docRef.data();
-				const cancelled = data.cancelled || null;
+				const cancelled = data.canceled || null;
 				const resUserUID = data.userUID || null;
+				const endDate = data.endDate;
+
+				if (endDate < new Date()) {
+						throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
+				}
 
 				if ((resUserUID === null) || (resUserUID !== userUID)) {
 					throw new functions.https.HttpsError('permission-denied','User can only modify their own reservations.');
@@ -669,7 +685,7 @@ exports.updateHotDeskReservation = function(data, context) {
 	})
 	.then( hotDeskUID => {
 		// below code checks that hot desk is free at that time and reservable
-		return db.collection('hotDeskReservations').where('deskUID','==',hotDeskUID).where('endDate','>=',startTime).get()
+		return db.collection('hotDeskReservations').where('deskUID','==',hotDeskUID).where('endDate','>=',startTime).where('canceled','==',false).get()
 		.then( docSnapshots => {
 			const docData = docSnapshots.docs.map( x => x.data());
 			var conflicts = docData.filter( x => {

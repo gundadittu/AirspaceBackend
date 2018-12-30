@@ -1229,8 +1229,9 @@ exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuest
 			console.error(error);
 			throw new functions.https.HttpsError(error);
 		})
+	} else {
+		return
 	}
-	return
 });
 
 exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
@@ -1290,25 +1291,28 @@ exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('s
 			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
 			}
-		}). then ( serviceRequestData => {
-			console.log('starting adding notifications');
-			const dataDict = { 'serviceRequestID': context.params.serviceRequestID, 'hostUID': hostUID, 'issueType': issueType };
-			return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
-				type: 'serviceRequestUpdate',
-				readStatus: false,
-				data: dataDict,
-				title: serviceRequestData.notificationTitle,
-				body: serviceRequestData.notificationBody,
-				timestamp: new Date(new Date().toUTCString())
-			})
-			.then(docRef => {
-				console.log('did add notifications');
-				return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
-			})
-			.catch( error => {
-				throw new functions.https.HttpsError(error);
-			})
 		})
+		.then ( serviceRequestData => {
+				console.log('starting adding notifications');
+				const dataDict = { 'serviceRequestID': context.params.serviceRequestID, 'hostUID': hostUID, 'issueType': issueType };
+				return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
+					type: 'serviceRequestUpdate',
+					readStatus: false,
+					data: dataDict,
+					title: serviceRequestData.notificationTitle,
+					body: serviceRequestData.notificationBody,
+					timestamp: new Date(new Date().toUTCString())
+				})
+				.then(docRef => {
+					console.log('did add notifications');
+					return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
+				})
+				.catch( error => {
+					throw new functions.https.HttpsError(error);
+				})
+		})
+	} else  {
+		return
 	}
 });
 
@@ -1342,6 +1346,8 @@ function getTitlefromServiceRequestType(type) {
 				return "Wifi Issues"
 			} else if (type === 'other') {
 				return "Other"
+			} else {
+				return "No Name"
 			}
 }
 

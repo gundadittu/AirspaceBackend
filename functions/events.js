@@ -1,6 +1,6 @@
 const functions = require('firebase-functions');
 
-exports.getUpcomingEventsForUser = function(data, contex, db) {
+exports.getUpcomingEventsForUser = function(data, context, db) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {

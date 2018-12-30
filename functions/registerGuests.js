@@ -1,3 +1,4 @@
+const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
 exports.createRegisteredGuest = function(data, context, db) {

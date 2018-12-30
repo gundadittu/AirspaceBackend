@@ -79,7 +79,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 	.then( x => {
 
 		// check that conference room is free at that time and reservable
-		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
+		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).where('canceled','==',false).get()
 		.then( docSnapshots => {
 			const docData = docSnapshots.docs.map( x => x.data());
 			var conflicts = docData.filter( x => {
@@ -186,7 +186,7 @@ exports.getReservationsForConferenceRoom = function(data, context, db) {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide a startDate, endDate, and roomUID')
 	}
 
-	return db.collection('conferenceRoomReservations').where('roomUID','==',roomUID).where('endDate','>=',givenStartDate).get()
+	return db.collection('conferenceRoomReservations').where('roomUID','==',roomUID).where('endDate','>=',givenStartDate).where('canceled','==',false).get()
 	.then( docSnapshots => {
 		const docData = docSnapshots.docs.map( x => x.data());
 		return docData.filter( x => {
@@ -265,7 +265,7 @@ exports.findAvailableConferenceRooms = function(data, context, db) {
 		var promises = confRoomsData.map( y => {
 			const uid = y.uid;
 
-			return db.collection('conferenceRoomReservations').where('roomUID','==',uid).where('endDate','>=',startDate).get()
+			return db.collection('conferenceRoomReservations').where('roomUID','==',uid).where('endDate','>=',startDate).where('canceled','==',false).get()
 			.then( docSnapshots => {
 				const docData = docSnapshots.docs.map( x => x.data());
 				var conflicts = docData.filter( x => {
@@ -398,7 +398,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 	}
 
 	var dict = {};
-	const upcoming = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).orderBy('startDate','asc').get()
+	const upcoming = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('endDate','>=',new Date()).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 
 		const docsData = docSnapshots.docs.map( x => x.data() );
@@ -425,7 +425,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 
 	});
 
-	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('startDate','<',new Date()).orderBy('startDate','desc').get()
+	const past = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('endDate','<',new Date()).where('canceled','==',false).orderBy('endDate','desc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
 		var promises = docsData.map( x => {
@@ -674,6 +674,11 @@ exports.updateConferenceRoomReservation = function(data, context, db) {
 				const data = docRef.data();
 				const canceled = data.canceled || null;
 				const resUserUID = data.userUID || null;
+				const endDate = data.endDate;
+
+				if (endDate < new Date()) {
+						throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
+				}
 
 				if ((resUserUID === null) || (resUserUID !== userUID)) {
 					throw new functions.https.HttpsError('permission-denied','User can only modify their own reservations.');
@@ -735,7 +740,7 @@ exports.updateConferenceRoomReservation = function(data, context, db) {
 	})
 	.then( conferenceRoomUID => {
 		// below code checks that conference room is free at that time and reservable
-		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).get()
+		return db.collection('conferenceRoomReservations').where('roomUID','==',conferenceRoomUID).where('endDate','>=',startTime).where('canceled','==',false).get()
 		.then( docSnapshots => {
 			const docData = docSnapshots.docs.map( x => x.data());
 			var conflicts = docData.filter( x => {
