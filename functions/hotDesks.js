@@ -389,7 +389,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 	}
 
 	var dict = {};
-	const upcoming = db.collection('hotDeskReservations').where('userUID','==',userUID).where('startDate','>=',new Date()).where('canceled','==',false).orderBy('startDate','asc').get()
+	const upcoming = db.collection('hotDeskReservations').where('userUID','==',userUID).where('endDate','>=',new Date()).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 
 		const docsData = docSnapshots.docs.map( x => x.data() );

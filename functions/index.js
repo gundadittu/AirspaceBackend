@@ -153,7 +153,7 @@ exports.createUser = functions.https.onCall((data, context) => {
 	const lastName = data.lastName || null;
 	const emailAdd = data.email;
 	const userType = data.type;
-	const pwrd = data.password || "4673807AirspaceSamplePassword4673807";
+	const pwrd = data.password || "Airspaceoffice2019";
 
   return admin.auth().createUser({
 		  displayName: firstName + " " + lastName,
