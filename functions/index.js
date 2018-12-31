@@ -11,6 +11,7 @@ const reservationFunctions = require('./reservations');
 const notificationFunctions = require('./notifications');
 const serviceRequestFunctions = require('./serviceRequests');
 const registerGuestFunctions = require('./registerGuests');
+const officeFunctions = require('./offices');
 
 var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
@@ -86,6 +87,71 @@ exports.getUpcomingEventsForUser = functions.https.onCall((data, context) => {
 	return eventFunctions.getUpcomingEventsForUser(data, context, db);
 });
 
+exports.createRegisteredGuest = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.createRegisteredGuest(data, context, db);
+});
+
+exports.updateUserFCMRegToken = functions.https.onCall((data, context) => {
+	return notificationFunctions.updateUserFCMRegToken(data, context, db);
+});
+
+exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.getUsersRegisteredGuests(data, context, db);
+});
+
+exports.cancelRegisteredGuest = functions.https.onCall((data, context) => {
+	return registerGuestFunctions.cancelRegisteredGuest(data, context, db);
+});
+
+exports.createServiceRequest = functions.https.onCall((data, context) => {
+	return serviceRequestFunctions.createServiceRequest(data, context, db);
+});
+
+exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
+	return serviceRequestFunctions.getUsersServiceRequests(data, context, db);
+});
+
+exports.cancelServiceRequest = functions.https.onCall((data, context) => {
+	return serviceRequestFunctions.cancelServiceRequest(data, context, db);
+});
+
+exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
+		return notificationFunctions.notifyUserOfArrivedGuest(change, context, db);
+});
+
+exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
+	return notificationFunctions.notifyUserofServiceRequestStatusChange(change, context, db);
+});
+
+exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
+	return officeFunctions.getEmployeesForOffice(data, context, db);
+});
+
+exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onUpdate((change, context) => {
+	return notificationFunctions.notifyUserofEventCreation(change, context, db);
+});
+
+exports.getUserType = functions.https.onCall((data, context) => {
+	const userUID = context.auth.uid || null;
+	if (userUID === null) {
+		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+	}
+
+	return db.collection('users').doc(userUID).get()
+	.then( docRef => {
+		if (docRef.exists) {
+			const data = docRef.data();
+			return data;
+		} else {
+			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+		}
+	})
+	.catch( error => {
+		console.error(error);
+		throw new functions.https.HttpsError(error);
+	})
+});
+
 
 exports.getUserProfile = functions.https.onCall((data, context) => {
 	const userUID = data.userUID || null;
@@ -104,6 +170,9 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 	})
 	.then( data => {
 		const companies = data.companies || null;
+		if (companies === null) {
+			return data
+		}
 		const promises = Promise.all(companies.map( x => {
 			return db.collection('companies').doc(x).get()
 			.then( docRef => {
@@ -123,6 +192,9 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 	})
 	.then( data => {
 		const offices = data.offices || null;
+		if (offices === null) {
+			return data
+		}
 		const promises = Promise.all(offices.map( x => {
 			return db.collection('offices').doc(x).get()
 			.then( docRef => {
@@ -180,30 +252,6 @@ exports.createUser = functions.https.onCall((data, context) => {
 		// fix error
 		console.error(error)
 		throw new functions.https.HttpsError('failed-precondition', 'Failed to create user.');
-	})
-});
-
-exports.getUserType = functions.https.onCall((data, context) =>  {
-	const email = data.email;
-	return admin.auth().getUserByEmail(email).then( userRecord => {
-		console.log("Successfully fetched user data:", userRecord.toJSON());
-		const uid = userRecord.uid;
-		return db.collection("users").doc(uid).get().then( doc => {
-			if (doc.exists) {
-				const type = doc.data().type;
-				console.log("Returning user type: ", type);
-				return { "type": type }
-			} else {
-				console.log('User does not exist in database.');
-				throw new functions.https.HttpsError('not-found', 'User does not exist in database.');
-			}
-		}).catch( error => {
-			console.log('Error fetching user data in database: ', error);
-			throw new functions.https.HttpsError('inter', 'Error fetching user data in database.');
-		})
-	}).catch( error => {
-		console.log("Error fetching user data: ", error);
-		throw new functions.https.HttpsError('internal', 'Error fetching user record.');
 	})
 });
 
@@ -330,6 +378,7 @@ exports.triggerUserBioInfoUpdate = functions.firestore.document('users/{uid}').o
 // NEED TO SEND WELCOME EMAIL HERE ON NEW USER CREATION with password setup instructions
 exports.sendWelcomeEmail = functions.auth.user().onCreate((user) => {
   console.log("New User created");
+	return
 });
 
 exports.deleteUser = functions.https.onCall((data, context) => {
@@ -398,11 +447,6 @@ exports.addLandlordToBuilding = functions.https.onCall((data, context) => {
 	if (userUID === null || buildingUID === null) {
 		throw new functions.https.HttpsError("invalid-arguments", "Need to provide building and landlord UID.");
 	}
-	// const userType = await extractUserTypeFromUID(userUID);
-
-	// if (userType !== 'landlord') {
-	// 	throw new functions.https.HttpsError("invalid-arguments", "Need to provide user with Landlord type.");
-	// }
 
 	const dbop1 = db.collection("buildings").doc(buildingUID).update({"landlords": admin.firestore.FieldValue.arrayUnion(userUID)})
 	.then( docRef => {
@@ -1119,285 +1163,6 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 			return newOfficeData;
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
-
-exports.createRegisteredGuest = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.createRegisteredGuest(data, context, db);
-});
-
-exports.updateUserFCMRegToken = functions.https.onCall((data, context) => {
-	return notificationFunctions.updateUserFCMRegToken(data, context, db);
-});
-
-exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.getUsersRegisteredGuests(data, context, db);
-});
-
-exports.cancelRegisteredGuest = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.cancelRegisteredGuest(data, context, db);
-});
-
-exports.createServiceRequest = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.createServiceRequest(data, context, db);
-});
-
-exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.getUsersServiceRequests(data, context, db);
-});
-
-exports.cancelServiceRequest = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.cancelServiceRequest(data, context, db);
-});
-
-exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
-	const newValue = change.after.data();
-	const oldValue = change.before.data();
-	const arrived = newValue.arrived || null;
-	const hostUID = oldValue.hostUID || null;
-	const guestName = oldValue.guestName || null;
-
-	if (arrived === null || hostUID === null) {
-		console.log("Need to provide a value for arrived and hostUID to trigger notification to host.");
-		return
-	}
-
-	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) {
-		return db.collection('users').doc(hostUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data();
-				const registrationTokens = data.registrationToken || null;
-
-				const notificationTitle = 'Your guest has arrived.';
-				data.notificationTitle = notificationTitle;
-				const notificationBody = 'Please meet '+ guestName +' by the reception area.';
-				data.notificationBody = notificationBody;
-
-				registrationTokens.forEach( x => {
-
-					var message = {
-						"token" : x,
-						"notification" : {
-						    "title" : notificationTitle,
-						    "body" : notificationBody
-						 }
-					};
-
-					return admin.messaging().send(message)
-					  .then((response) => {
-					    // Response is a message ID string.
-					    console.log('Successfully sent message:', response);
-					    return data
-					  })
-					  .catch((error) => {
-					    console.error(error);
-					    throw new functions.https.HttpsError(error);
-					  });
-				});
-
-				return data;
-			} else {
-				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
-			}
-		})
-		.then( arrivedGuestData => {
-			const dataDict = { 'registeredGuestUID': context.params.registrationID, 'guestName': guestName,'hostUID': hostUID };
-			return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
-				type: 'arrivedGuestUpdate',
-				readStatus: false,
-				data: dataDict,
-				title: arrivedGuestData.notificationTitle,
-				body: arrivedGuestData.notificationBody,
-				timestamp: new Date(new Date().toUTCString())
-			})
-			.then(docRef => {
-				return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
-			})
-			.catch( error => {
-				throw new functions.https.HttpsError(error);
-			})
-
-		})
-		.catch(error => {
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-	} else {
-		return
-	}
-});
-
-exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
-	const newValue = change.after.data();
-	const oldValue = change.before.data();
-	const hostUID = newValue.userUID || null;
-	const issueType = newValue.issueType || null;
-
-	if (newValue.status !== oldValue.status) {
-		if (hostUID === null) {
-			return
-		}
-		return db.collection('users').doc(hostUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data();
-				const registrationTokens = data.registrationToken || null;
-
-				var notBody = ""
-				if (newValue.status === "open") {
-					notBody = "We have received your request and will start working on it asap."
-				} else if (newValue.status === "pending")  {
-					notBody = "We have started working on your request."
-				} else if (newValue.status === "closed")  {
-					notBody = "We have finished working on your request."
-				}
-				const notificationTitle = getTitlefromServiceRequestType(issueType);
-				data.notificationTitle = notificationTitle
-				data.notificationBody = notBody;
-
-				 registrationTokens.forEach( x => {
-					var message = {
-						"token" : x,
-						"notification" : {
-						    "title" : notificationTitle,
-						    "body" : notBody,
-						 },
-						 "data": {
- 							"type" : "serviceRequestUpdate",
-						    'requestUID': context.params.serviceRequestID
-						 }
-					};
-
-					return admin.messaging().send(message)
-					  .then((response) => {
-					    // Response is a message ID string.
-					    console.log('Successfully sent message:', response);
-					    return
-					  })
-					  .catch((error) => {
-					    console.error(error);
-					    throw new functions.https.HttpsError(error);
-					  });
-				});
-
-				 return data;
-			} else {
-				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
-			}
-		})
-		.then ( serviceRequestData => {
-				console.log('starting adding notifications');
-				const dataDict = { 'serviceRequestID': context.params.serviceRequestID, 'hostUID': hostUID, 'issueType': issueType };
-				return db.collection('userNotifications').doc(hostUID).collection('notifications').add({
-					type: 'serviceRequestUpdate',
-					readStatus: false,
-					data: dataDict,
-					title: serviceRequestData.notificationTitle,
-					body: serviceRequestData.notificationBody,
-					timestamp: new Date(new Date().toUTCString())
-				})
-				.then(docRef => {
-					console.log('did add notifications');
-					return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
-				})
-				.catch( error => {
-					throw new functions.https.HttpsError(error);
-				})
-		})
-	} else  {
-		return
-	}
-});
-
-function getTitlefromServiceRequestType(type) {
-
-			if (type === 'furnitureRepair') {
-				return "Furniture Repair"
-			} else if (type === "brokenFixtures") {
-				return "Fixture Repair"
-			} else if (type === "lightsNotWorking") {
-				return "Lights Not Working"
-			} else if (type === 'waterDamageLeak') {
-				return "Water/Damage Leak"
-			} else if (type === 'brokenACHeating') {
-				return "Broken AC/Heating"
-			} else if (type === 'kitchenIssues') {
-				return "Kitchen Issues"
-			} else if (type === 'bathroomIssues') {
-				return "Bathroom Issues"
-			} else if (type === "damagedDyingPlants") {
-				return "Damaged/Dying Plants"
-			} else if (type === 'conferenceRoomHardware') {
-				return "Conference Room Hardware Issues"
-			} else if (type === "webMobileIssues") {
-				return "Web/Mobile App Issues"
-			} else if (type === 'furnitureMovingRequest') {
-				return "Furniture Moving Request"
-			} else if (type === 'printingIssues') {
-				return "Printing Issues"
-			} else if (type === 'wifiIssues') {
-				return "Wifi Issues"
-			} else if (type === 'other') {
-				return "Other"
-			} else {
-				return "No Name"
-			}
-}
-
-
-exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
-	// check to see that user has permission (is part of office)
-
-	const officeUID = data.officeUID || null;
-	const userUID = context.auth.uid || null;
-
-	if (officeUID === null) {
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
-	}
-	if (userUID === null) {
-		throw new functions.https.HttpsError('invalid-arguments','User must be logged in.');
-	}
-
-	return db.collection('offices').doc(officeUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			const employees = data.employees;
-			const filteredEmployees = employees.filter(x => {
-				return (x !== userUID)
-			});
-			return filteredEmployees
-		} else {
-			throw new functions.https.HttpsError('not-found','Could not find office in database.');
-		}
-	})
-	.then( employees => {
-		var promises = employees.map(x => {
-			return db.collection('users').doc(x).get()
-			.then( docRef => {
-				if (docRef.exists) {
-					return docRef.data()
-				} else {
-					return x;
-				}
-			})
-			.catch( error => {
-				throw new functions.https.HttpsError(error);
-			})
-		})
-
-		return Promise.all(promises)
-		.then( employeeDataArray => {
-			return employeeDataArray
-		})
-		.catch( error => {
 			throw new functions.https.HttpsError(error);
 		})
 	})
