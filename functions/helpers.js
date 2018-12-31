@@ -50,7 +50,8 @@ exports.getUserData = function(userUIDs, db) {
 	if ((userUIDs === null) || (userUIDs.length === 0)) {
 		return
 	}
-	return userUIDs.map(x => {
+	console.log(userUIDs);
+	var promises = userUIDs.map(x => {
 		return db.collection('users').doc(x).get()
 		.then( docRef => {
 			if (docRef.exists) {
@@ -59,6 +60,11 @@ exports.getUserData = function(userUIDs, db) {
 				return {'uid':x }
 			}
 		})
+	})
+
+	return Promise.all(promises)
+	.then( usersData => {
+		return usersData
 	})
 	.catch( error => {
 		console.error(error);

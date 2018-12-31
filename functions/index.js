@@ -17,8 +17,6 @@ var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
 db.settings(settings);
 
-// *--- ADMIN FUNCTIONS ----*
-
 exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
 	return reservationFunctions.getUsersReservationsForRange(data, context, db);
 });
@@ -130,6 +128,8 @@ exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onUpdate((change, context) => {
 	return notificationFunctions.notifyUserofEventCreation(change, context, db);
 });
+
+// *--- ADMIN FUNCTIONS ----*
 
 exports.getUserType = functions.https.onCall((data, context) => {
 	const userUID = context.auth.uid || null;

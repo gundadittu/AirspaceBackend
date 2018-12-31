@@ -550,12 +550,14 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 		const upcoming = dict.upcoming;
 		var upcomingPromises = upcoming.map( x => {
 			const attendees = x.attendees || null;
+			console.log(attendees);
 			if ((attendees === null) || (attendees.length === 0)) {
 				return x
 			}
+			console.log(attendees);
 			return helperFunctions.getUserData(attendees, db)
 			.then( userData => {
-				x.attendees = userDate
+				x.attendees = userData
 				return x
 			})
 		})
@@ -570,6 +572,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 		const past = dict.past;
 		var pastPromises = past.map( x => {
 			const attendees = x.attendees || null;
+			console.log(attendees);
 			if ((attendees === null) || (attendees.length === 0)) {
 				return x
 			}
