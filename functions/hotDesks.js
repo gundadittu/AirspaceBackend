@@ -579,7 +579,7 @@ exports.cancelHotDeskReservation = function(data, context, db) {
 	})
 }
 
-exports.updateHotDeskReservation = function(data, context) {
+exports.updateHotDeskReservation = function(data, context, db) {
 	const reservationUID = data.reservationUID || null;
 	const userUID = context.auth.uid || null; /// check to see that user matches one on reservation?
 	const startTime = new Date(data.startTime) || null;
@@ -618,24 +618,25 @@ exports.updateHotDeskReservation = function(data, context) {
 		.then( docRef => {
 			if (docRef.exists) {
 				const data = docRef.data();
-				const cancelled = data.canceled || null;
+				const cancelled = data.canceled || false;
 				const resUserUID = data.userUID || null;
 				const endDate = data.endDate;
 
 				if (endDate < new Date()) {
-						throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
+					throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
 				}
 
 				if ((resUserUID === null) || (resUserUID !== userUID)) {
 					throw new functions.https.HttpsError('permission-denied','User can only modify their own reservations.');
 				}
 
-				if ((cancelled === null) || (cancelled === true)) {
+				if (cancelled === true) {
 					throw new functions.https.HttpsError('permission-denied','User cannot modify a canceled reservation.');
 				}
 
 				const hotDeskUID = data.deskUID || null;
 				if (hotDeskUID === null) {
+
 					throw new functions.https.HttpsError('not-found','Unable to find conference room linked to reservation.');
 				}
 				return hotDeskUID
@@ -692,7 +693,8 @@ exports.updateHotDeskReservation = function(data, context) {
 				// check if startDate of existing res is less than endDate of new res
 				const exStartDate = x.startDate.toDate();
 				const check = (exStartDate < endTime);
-				return check
+				const doubleCheck = (reservationUID !== x.uid)
+				return check && doubleCheck
 			});
 
 			if (conflicts.length !== 0) {

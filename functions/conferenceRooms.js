@@ -578,7 +578,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 			}
 			return helperFunctions.getUserData(attendees, db)
 			.then( userData => {
-				x.attendees = userDate
+				x.attendees = userData
 				return x
 			})
 		})
@@ -675,19 +675,19 @@ exports.updateConferenceRoomReservation = function(data, context, db) {
 		.then( docRef => {
 			if (docRef.exists) {
 				const data = docRef.data();
-				const canceled = data.canceled || null;
+				const canceled = data.canceled || false;
 				const resUserUID = data.userUID || null;
 				const endDate = data.endDate;
 
 				if (endDate < new Date()) {
-						throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
+					throw new functions.https.HttpsError('permission-denied','User can not modify a reservation that is in the past.');
 				}
 
 				if ((resUserUID === null) || (resUserUID !== userUID)) {
 					throw new functions.https.HttpsError('permission-denied','User can only modify their own reservations.');
 				}
 
-				if ((canceled === null) || (canceled === true)) {
+				if (canceled === true) {
 					throw new functions.https.HttpsError('permission-denied','User cannot modify a canceled reservation.');
 				}
 
@@ -750,7 +750,8 @@ exports.updateConferenceRoomReservation = function(data, context, db) {
 				// check if startDate of existing res is less than endDate of new res
 				const exStartDate = x.startDate.toDate();
 				const check = (exStartDate < endTime);
-				return check
+				const doubleCheck = (reservationUID !== x.uid)
+				return check && doubleCheck
 			});
 
 			if (conflicts.length !== 0) {
