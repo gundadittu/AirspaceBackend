@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
 const helperFunctions = require('./helpers');
 const googleCalendarFunctions = require('./googleCalendar');
+const storageFunctions = require('./storage');
 
 exports.createHotDeskReservation = function(data, context, db) {
 
@@ -211,7 +212,7 @@ exports.getReservationsForHotDesk = function(data, context, db) {
 	})
 }
 
-exports.findAvailableHotDesks = function(data, context, db) {
+exports.findAvailableHotDesks = function(data, context, db, admin) {
 	const officeUID = data.officeUID || null;
 	var startDate = new Date(data.startDate) || null;
 	var duration = data.duration || null;
@@ -310,13 +311,33 @@ exports.findAvailableHotDesks = function(data, context, db) {
 			throw new functions.https.HttpsError(error);
 		})
 	})
+	.then( deskData => {
+		const promises = deskData.map( x => {
+			return storageFunctions.getDeskImageURL(x.uid, admin)
+			.then( url => {
+				x.imageURL = url;
+				return x;
+			})
+			.catch(error => {
+				return x;
+			})
+		});
+
+		return Promise.all(promises)
+		.then( (desks) => {
+			return desks;
+		})
+		.catch( error => {
+			throw new functions.https.HttpsError(error);
+		})
+	})
 	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 }
 
-exports.getAllHotDesksForUser = function(data, context, db) {
+exports.getAllHotDesksForUser = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {
@@ -369,6 +390,26 @@ exports.getAllHotDesksForUser = function(data, context, db) {
 	  	.then( res => {
 	  		return hotDesks
 	  	})
+			.then( deskData => {
+				const promises = deskData.map( x => {
+					return storageFunctions.getDeskImageURL(x.uid, admin)
+					.then( url => {
+						x.imageURL = url;
+						return x;
+					})
+					.catch(error => {
+						return x;
+					})
+				});
+
+				return Promise.all(promises)
+				.then( (desks) => {
+					return desks;
+				})
+				.catch( error => {
+					throw new functions.https.HttpsError(error);
+				})
+			})
 	  	.catch( error => {
 	  		throw new functions.https.HttpsError(error);
 	  	})
@@ -381,7 +422,7 @@ exports.getAllHotDesksForUser = function(data, context, db) {
 }
 
 
-exports.getAllHotDeskReservationsForUser = function(data, context, db) {
+exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {
@@ -402,10 +443,29 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 				}
 				return x
 			})
-
 		});
 
 		return Promise.all(promises)
+		.then( reservations => {
+			const promises = reservations.map( x => {
+				return storageFunctions.getDeskImageURL(x.hotDesk.uid, admin)
+				.then( url => {
+					x.hotDesk.imageURL = url;
+					return x;
+				})
+				.catch(error => {
+					return x;
+				})
+			});
+
+			return Promise.all(promises)
+			.then( (reservationData) => {
+				return reservationData;
+			})
+			.catch( error => {
+				throw new functions.https.HttpsError(error);
+			})
+		})
 		.then( reservations => {
 			dict["upcoming"] = reservations;
 			return
@@ -432,6 +492,26 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db) {
 		});
 
 		return Promise.all(promises)
+		.then( reservations => {
+			const promises = reservations.map( x => {
+				return storageFunctions.getDeskImageURL(x.hotDesk.uid, admin)
+				.then( url => {
+					x.hotDesk.imageURL = url;
+					return x;
+				})
+				.catch(error => {
+					return x;
+				})
+			});
+
+			return Promise.all(promises)
+			.then( (reservationData) => {
+				return reservationData;
+			})
+			.catch( error => {
+				throw new functions.https.HttpsError(error);
+			})
+		})
 		.then( reservations => {
 			dict["past"] = reservations;
 			return

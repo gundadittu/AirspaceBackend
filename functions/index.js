@@ -1,7 +1,11 @@
 'use strict';
 
-const admin = require('firebase-admin');
-admin.initializeApp()
+var admin = require("firebase-admin");
+var serviceAccount = require("./serviceAccountKey.json");
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "airspace-management-app.appspot.com"
+});
 
 const functions = require('firebase-functions');
 const conferenceRoomFunctions = require('./conferenceRooms');
@@ -18,11 +22,11 @@ const settings = {timestampsInSnapshots: true};
 db.settings(settings);
 
 exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
-	return reservationFunctions.getUsersReservationsForRange(data, context, db);
+	return reservationFunctions.getUsersReservationsForRange(data, context, db, admin);
 });
 
 exports.findAvailableConferenceRooms = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.findAvailableConferenceRooms(data, context, db);
+	return conferenceRoomFunctions.findAvailableConferenceRooms(data, context, db, admin);
 });
 
 exports.getReservationsForConferenceRoom = functions.https.onCall((data, context) => {
@@ -34,11 +38,11 @@ exports.createConferenceRoomReservation = functions.https.onCall((data, context)
 });
 
 exports.getAllConferenceRoomsForUser = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.getAllConferenceRoomsForUser(data, context, db);
+	return conferenceRoomFunctions.getAllConferenceRoomsForUser(data, context, db, admin);
 });
 
 exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.getAllConferenceRoomReservationsForUser(data, context, db);
+	return conferenceRoomFunctions.getAllConferenceRoomReservationsForUser(data, context, db, admin);
 });
 
 exports.cancelRoomReservation = functions.https.onCall((data, context) => {
@@ -54,7 +58,7 @@ exports.createHotDeskReservation = functions.https.onCall((data, context) => {
 });
 
 exports.findAvailableHotDesks = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.findAvailableHotDesks(data, context, db);
+	return hotDeskFunctions.findAvailableHotDesks(data, context, db, admin);
 });
 
 exports.getReservationsForHotDesk = functions.https.onCall((data, context) => {
@@ -62,11 +66,11 @@ exports.getReservationsForHotDesk = functions.https.onCall((data, context) => {
 });
 
 exports.getAllHotDesksForUser = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.getAllHotDesksForUser(data, context, db);
+	return hotDeskFunctions.getAllHotDesksForUser(data, context, db, admin);
 });
 
 exports.getAllHotDeskReservationsForUser = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.getAllHotDeskReservationsForUser(data, context, db);
+	return hotDeskFunctions.getAllHotDeskReservationsForUser(data, context, db, admin);
 });
 
 exports.updateHotDeskReservation = functions.https.onCall((data, context) => {
@@ -82,7 +86,7 @@ exports.getUsersNotifications = functions.https.onCall((data, context) => {
 });
 
 exports.getUpcomingEventsForUser = functions.https.onCall((data, context) => {
-	return eventFunctions.getUpcomingEventsForUser(data, context, db);
+	return eventFunctions.getUpcomingEventsForUser(data, context, db, admin);
 });
 
 exports.createRegisteredGuest = functions.https.onCall((data, context) => {
@@ -125,8 +129,8 @@ exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	return officeFunctions.getEmployeesForOffice(data, context, db);
 });
 
-exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onUpdate((change, context) => {
-	return notificationFunctions.notifyUserofEventCreation(change, context, db);
+exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onCreate((snap, context) => {
+	return notificationFunctions.notifyUserofEventCreation(snap, context, db);
 });
 
 // *--- ADMIN FUNCTIONS ----*

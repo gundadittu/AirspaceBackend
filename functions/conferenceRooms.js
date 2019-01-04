@@ -1,4 +1,5 @@
 const functions = require('firebase-functions');
+const storageFunctions = require('./storage');
 const googleCalendarFunctions = require('./googleCalendar');
 const helperFunctions = require('./helpers');
 
@@ -27,7 +28,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 		throw new functions.https.HttpsError('unauthenticated','User must be logged in.');
 	}
 
-	// check to make sure user can book conference room??????
+	// check to make sure user can book conference room??
 	return db.collection('users').doc(userUID).get()
 	.then( docRef => {
 		if (docRef.exists) {
@@ -202,7 +203,7 @@ exports.getReservationsForConferenceRoom = function(data, context, db) {
 	})
 }
 
-exports.findAvailableConferenceRooms = function(data, context, db) {
+exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 	const amenities = data.amenities || null;
 	const officeUID = data.officeUID || null;
 	const capacity = data.capacity || null;
@@ -320,13 +321,33 @@ exports.findAvailableConferenceRooms = function(data, context, db) {
 			throw new functions.https.HttpsError(error);
 		})
 	})
+	.then( updatedRoomData => {
+		const promises = updatedRoomData.map( x => {
+			return storageFunctions.getConferenceRoomImageURL(x.uid, admin)
+			.then( url => {
+				x.imageURL = url;
+				return x;
+			})
+			.catch(error => {
+				return x;
+			})
+		});
+
+		return Promise.all(promises)
+		.then( finalRoomData => {
+			return finalRoomData;
+		})
+		.catch( error => {
+			throw new functions.https.HttpsError(error);
+		})
+	})
 	.catch( error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 }
 
-exports.getAllConferenceRoomsForUser = function(data, context, db) {
+exports.getAllConferenceRoomsForUser = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {
@@ -384,13 +405,33 @@ exports.getAllConferenceRoomsForUser = function(data, context, db) {
 	  	})
 
 	})
+	.then( conferenceRooms => {
+		const promises = conferenceRooms.map( x => {
+			return storageFunctions.getConferenceRoomImageURL(x.uid, admin)
+			.then( url => {
+				x.imageURL = url;
+				return x;
+			})
+			.catch(error => {
+				return x;
+			})
+		});
+
+		return Promise.all(promises)
+		.then( finalRoomData => {
+			return finalRoomData;
+		})
+		.catch( error => {
+			throw new functions.https.HttpsError(error);
+		})
+	})
 	.catch(error => {
 		console.error(error);
 		throw new functions.https.HttpsError(error);
 	})
 }
 
-exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
+exports.getAllConferenceRoomReservationsForUser = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {
@@ -416,6 +457,26 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 
 		return Promise.all(promises)
 		.then( reservations => {
+			const promises = reservations.map( x => {
+				return storageFunctions.getConferenceRoomImageURL(x.conferenceRoom.uid, admin)
+				.then( url => {
+					x.conferenceRoom.imageURL = url;
+					return x;
+				})
+				.catch(error => {
+					return x;
+				})
+			});
+
+			return Promise.all(promises)
+			.then( (reservations) => {
+				return reservations;
+			})
+			.catch( error => {
+				throw new functions.https.HttpsError(error);
+			})
+		})
+		.then( reservations => {
 			dict["upcoming"] = reservations;
 			return
 		})
@@ -437,10 +498,29 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db) {
 				}
 				return x
 			})
-
 		});
 
 		return Promise.all(promises)
+		.then( reservations => {
+			const promises = reservations.map( x => {
+				return storageFunctions.getConferenceRoomImageURL(x.conferenceRoom.uid, admin)
+				.then( url => {
+					x.conferenceRoom.imageURL = url;
+					return x;
+				})
+				.catch(error => {
+					return x;
+				})
+			});
+
+			return Promise.all(promises)
+			.then( (reservations) => {
+				return reservations;
+			})
+			.catch( error => {
+				throw new functions.https.HttpsError(error);
+			})
+		})
 		.then( reservations => {
 			dict["past"] = reservations;
 			return

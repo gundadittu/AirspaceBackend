@@ -1,7 +1,7 @@
 const functions = require('firebase-functions');
 const helperFunctions = require('./helpers');
 
-exports.getUsersReservationsForRange = function(data, context, db) {
+exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 	const rangeStart = new Date(data.rangeStart) || null;
 	const rangeEnd = new Date(data.rangeEnd) || null;
@@ -47,6 +47,26 @@ exports.getUsersReservationsForRange = function(data, context, db) {
 			});
 
 			return Promise.all(promises)
+			.then( reservations => {
+				const promises = reservations.map( x => {
+					return storageFunctions.getConferenceRoomImageURL(x.conferenceRoom.uid, admin)
+					.then( url => {
+						x.conferenceRoom.imageURL = url;
+						return x;
+					})
+					.catch(error => {
+						return x;
+					})
+				});
+
+				return Promise.all(promises)
+				.then( (reservations) => {
+					return reservations;
+				})
+				.catch( error => {
+					throw new functions.https.HttpsError(error);
+				})
+			})
 			.then( roomReservations => {
 				return roomReservations
 			})
@@ -132,6 +152,26 @@ exports.getUsersReservationsForRange = function(data, context, db) {
 			});
 
 			return Promise.all(promises)
+			.then( reservations => {
+				const promises = reservations.map( x => {
+					return storageFunctions.getDeskImageURL(x.hotDesk.uid, admin)
+					.then( url => {
+						x.hotDesk.imageURL = url;
+						return x;
+					})
+					.catch(error => {
+						return x;
+					})
+				});
+
+				return Promise.all(promises)
+				.then( (reservationData) => {
+					return reservationData;
+				})
+				.catch( error => {
+					throw new functions.https.HttpsError(error);
+				})
+			})
 			.then( reservations => {
 				return reservations
 			})

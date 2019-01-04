@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
+const storageFunctions = require('./storage');
 
-exports.getUpcomingEventsForUser = function(data, context, db) {
+exports.getUpcomingEventsForUser = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
 
 	if (userUID === null) {
@@ -31,14 +32,34 @@ exports.getUpcomingEventsForUser = function(data, context, db) {
 			return db.collection('events').where('officeUIDs','array-contains', x).where('startDate','>=',todayDate).where('canceled','==',false).orderBy('startDate','asc').get()
 			.then( docSnapshots => {
 				const docsData = docSnapshots.docs.map( x => x.data() );
-				const localArray = relevantEvents.concat(docsData);
+				const promises = docsData.map( x => {
+					return storageFunctions.getEventImageURL(x.uid, admin)
+					.then( url => {
+						x.imageURL = url;
+						return x;
+					})
+					.catch(error => {
+						return x;
+					})
+				});
+
+				return Promise.all(promises)
+				.then( eventData => {
+					return eventData;
+				})
+				.catch( error => {
+					throw new functions.https.HttpsError(error);
+				})
+			})
+			.then( eventData => {
+				const localArray = relevantEvents.concat(eventData);
 				relevantEvents = localArray;
 				return
 			})
 		});
 
 		return Promise.all(promises)
-		.then( x => {
+		.then( () => {
 			const sortedArray = relevantEvents.sort( (x,y) => {
   				return new Date(x.startDate) - new Date(y.startDate);
 			});

@@ -71,7 +71,7 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 
 	if (arrived === null || hostUID === null) {
 		console.log("Need to provide a value for arrived and hostUID to trigger notification to host.");
-		return
+		return {};
 	}
 
 	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) {
@@ -86,7 +86,7 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 				const notificationBody = 'Please meet '+ guestName +' by the reception area.';
 				data.notificationBody = notificationBody;
 
-				registrationTokens.forEach( x => {
+				return registrationTokens.forEach( x => {
 
 					var message = {
 						"token" : x,
@@ -96,7 +96,7 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 						 }
 					};
 
-					return admin.messaging().send(message)
+				 return admin.messaging().send(message)
 					  .then((response) => {
 					    // Response is a message ID string.
 					    console.log('Successfully sent message:', response);
@@ -108,7 +108,6 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 					  });
 				});
 
-				return data;
 			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
 			}
@@ -136,7 +135,7 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 			throw new functions.https.HttpsError(error);
 		})
 	} else {
-		return
+		return {}
 	}
 }
 
@@ -148,7 +147,7 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 
 	if (newValue.status !== oldValue.status) {
 		if (hostUID === null) {
-			return
+			return {}
 		}
 		return db.collection('users').doc(hostUID).get()
 		.then( docRef => {
@@ -168,7 +167,7 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 				data.notificationTitle = notificationTitle
 				data.notificationBody = notBody;
 
-				 registrationTokens.forEach( x => {
+				 var promises = registrationTokens.map( x => {
 					var message = {
 						"token" : x,
 						"notification" : {
@@ -181,7 +180,7 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 						 }
 					};
 
-					return admin.messaging().send(message)
+			  	return admin.messaging().send(message)
 					  .then((response) => {
 					    // Response is a message ID string.
 					    console.log('Successfully sent message:', response);
@@ -193,7 +192,10 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 					  });
 				});
 
-				 return data;
+				return Promise.all(promises)
+				.then( () => {
+					return data
+				})
 			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
 			}
@@ -218,7 +220,7 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 				})
 		})
 	} else  {
-		return
+			return {};
 	}
 }
 
@@ -257,6 +259,81 @@ function getTitlefromServiceRequestType(type) {
 			}
 }
 
-exports.notifyUserofEventCreation = function(change, context, db) {
-	return
+exports.notifyUserofEventCreation = function(snap, context, db) {
+	var newValue = snap.data();
+	const officeUIDs = newValue.officeUIDs || null;
+	const eventName = newValue.title || "No Event Name";
+	const eventSubtitle = newValue.description || newValue.address;
+
+	if (officeUIDs !== null) {
+
+		return officeUIDs.map( x => {
+			return db.collection('users').where('offices','array-contains',x).get()
+			.then( docSnapshots => {
+				const docsData = docSnapshots.docs.map( x => x.data() );
+				return docsData;
+			})
+			.then( usersData => {
+						return usersData.map( x => {
+								const registrationTokens = x.registrationToken || null;
+
+								const notificationTitle = "New Event: "+eventName;
+								const notBody = eventSubtitle;
+								newValue.notificationTitle = notificationTitle;
+								newValue.notificationBody = notBody;
+
+								 return registrationTokens.forEach( x => {
+									var message = {
+										"token" : x,
+										"notification" : {
+												"title" : notificationTitle,
+												"body" : notBody,
+										 },
+										 "data": {
+											"type" : "newEvent",
+											'eventUID': context.params.eventID
+										 }
+									};
+
+									return admin.messaging().send(message)
+										.then((response) => {
+											// Response is a message ID string.
+											console.log('Successfully sent message:', response);
+											return
+										})
+										.then ( data => {
+												console.log('starting adding notifications');
+												const dataDict = { 'eventUID': context.params.eventID };
+												return db.collection('userNotifications').doc(x.uid).collection('notifications').add({
+													type: 'newEvent',
+													readStatus: false,
+													data: dataDict,
+													title: data.notificationTitle,
+													body: data.notificationBody,
+													timestamp: new Date(new Date().toUTCString())
+												})
+												.then(docRef => {
+													console.log('did add notifications');
+													return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
+												})
+												.catch( error => {
+													throw new functions.https.HttpsError(error);
+												})
+										})
+										.catch((error) => {
+											console.error(error);
+											throw new functions.https.HttpsError(error);
+										});
+							})
+						})
+			})
+			.catch( error => {
+					console.error(error);
+					throw new functions.https.HttpsError(error);
+			})
+		})
+
+	} else {
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUIDs to event.');
+	}
 }
