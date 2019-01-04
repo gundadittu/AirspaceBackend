@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const helperFunctions = require('./helpers');
+const storageFunctions = require('./storage');
 
 exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	const userUID = context.auth.uid || null;
