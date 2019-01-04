@@ -58,12 +58,10 @@ exports.getUsersRegisteredGuests = function(data, context, db) {
 		throw new functions.https.HttpsError('invalid-arguments','User must be signed in.');
 	}
 
-	const dict = {};
-	const promises = []
-	const upcoming = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',false).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
-	.then( docSnapshots => {
+	return db.collection('registeredGuests').where('hostUID','==',uid).where("canceled",'==',false).orderBy('expectedVisitDate','asc').get()
+	.then( docSnapshots => { 
 		const docsData = docSnapshots.docs.map( x => x.data());
-		const docs = docsData.map(x => {
+		const promises = docsData.map(x => {
 			const officeUID = x.visitingOfficeUID || null;
 			if (officeUID !== null) {
 				return db.collection('offices').doc(officeUID).get()
@@ -78,53 +76,40 @@ exports.getUsersRegisteredGuests = function(data, context, db) {
 			} else {
 				return x
 			}
-		})
+		});
 
-		return Promise.all(docs)
-		.then( updatedDocs => {
-			dict['upcoming'] = updatedDocs;
-			return
-		})
-		.catch( error => {
-			throw new functions.https.HttpsError(error);
-		})
+		return Promise.all(promises)
+		.then( guestData => { 
+			return guestData;
+		}) 
 	})
-	const past = db.collection('registeredGuests').where('hostUID','==',uid).where('arrived','==',true).where('canceled','==',false).orderBy('expectedVisitDate','asc').get()
-	.then( docSnapshots => {
-		const docsData = docSnapshots.docs.map( x => x.data());
-		const docs = docsData.map(x => {
-			const officeUID = x.visitingOfficeUID || null;
-			if (officeUID !== null) {
-				return db.collection('offices').doc(officeUID).get()
-				.then(docRef => {
-					const data = docRef.data() || null;
-					x.visitingOffice = data;
-					return x
-				})
-			} else {
-				return x
+	.then( guestData => { 
+		var upcoming = [];
+		var past = []; 
+
+		for (i = 0; i < guestData.length; i++) { 
+			const guestItem = guestData[i];
+			const visitDate = guestItem.expectedVisitDate.toDate();
+			const arrived = guestItem.arrived; 
+			const cancelled = guestItem.canceled;
+			
+			if (cancelled === true) { 
+				continue 
 			}
-		})
-		return Promise.all(docs)
-		.then( updatedDocs => {
-			dict['past'] = updatedDocs;
-			return
-		})
-		.catch( error => {
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	promises.push(upcoming);
-	promises.push(past);
 
-	return Promise.all(promises)
-	.then( res => {
-		console.log('Successfully got all registered guests for user('+uid+') : '+dict);
-		return dict
-	})
-	.catch( error => {
-		console.error(error);
-		throw new functions.https.HttpsError(error);
+			if (visitDate >= new Date()) { 
+				if (arrived === true) { 
+					past.push(guestItem);
+				} else { 
+					upcoming.push(guestItem);
+				}
+			} else { 
+				past.push(guestItem);
+			}
+		}
+
+		const dict = {"upcoming": upcoming, "past": past};
+		return dict;
 	})
 }
 
