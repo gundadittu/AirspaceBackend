@@ -118,19 +118,19 @@ exports.cancelServiceRequest = functions.https.onCall((data, context) => {
 });
 
 exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
-		return notificationFunctions.notifyUserOfArrivedGuest(change, context, db);
+		return notificationFunctions.notifyUserOfArrivedGuest(change, context, db, admin);
 });
 
 exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
-	return notificationFunctions.notifyUserofServiceRequestStatusChange(change, context, db);
+	return notificationFunctions.notifyUserofServiceRequestStatusChange(change, context, db, admin);
+});
+
+exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onCreate((snap, context) => {
+	return notificationFunctions.notifyUserofEventCreation(snap, context, db, admin);
 });
 
 exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	return officeFunctions.getEmployeesForOffice(data, context, db);
-});
-
-exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onCreate((snap, context) => {
-	return notificationFunctions.notifyUserofEventCreation(snap, context, db);
 });
 
 // *--- ADMIN FUNCTIONS ----*

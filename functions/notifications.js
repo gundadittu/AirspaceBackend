@@ -1,4 +1,3 @@
-const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
 exports.getUsersNotifications = function(data, context, db) {
@@ -62,7 +61,7 @@ exports.updateUserFCMRegToken = function(data, context, db) {
 	})
 }
 
-exports.notifyUserOfArrivedGuest = function(change, context, db) {
+exports.notifyUserOfArrivedGuest = function(change, context, db, admin) {
 	const newValue = change.after.data();
 	const oldValue = change.before.data();
 	const arrived = newValue.arrived || null;
@@ -81,12 +80,16 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 				const data = docRef.data();
 				const registrationTokens = data.registrationToken || null;
 
+				if (registrationTokens === null) { 
+					return 
+				}
+
 				const notificationTitle = 'Your guest has arrived.';
 				data.notificationTitle = notificationTitle;
 				const notificationBody = 'Please meet '+ guestName +' by the reception area.';
 				data.notificationBody = notificationBody;
 
-				return registrationTokens.forEach( x => {
+				var promises = registrationTokens.map( x => {
 
 					var message = {
 						"token" : x,
@@ -104,9 +107,15 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 					  })
 					  .catch((error) => {
 					    console.error(error);
-					    throw new functions.https.HttpsError(error);
+					    return null
 					  });
 				});
+
+				return Promise.all(promises)
+				.catch( error => {
+					console.error(error);
+					throw new functions.https.HttpsError(error);
+				})
 
 			} else {
 				throw new functions.https.HttpsError('not-found','Unable to find host user in database.');
@@ -139,7 +148,7 @@ exports.notifyUserOfArrivedGuest = function(change, context, db) {
 	}
 }
 
-exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
+exports.notifyUserofServiceRequestStatusChange = function(change, context, db, admin) {
 	const newValue = change.after.data();
 	const oldValue = change.before.data();
 	const hostUID = newValue.userUID || null;
@@ -155,6 +164,10 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 				const data = docRef.data();
 				const registrationTokens = data.registrationToken || null;
 
+				if (registrationTokens === null) { 
+					console.log("No registrationToken");
+					return 
+				}
 				var notBody = ""
 				if (newValue.status === "open") {
 					notBody = "We have received your request and will start working on it asap."
@@ -188,7 +201,7 @@ exports.notifyUserofServiceRequestStatusChange = function(change, context, db) {
 					  })
 					  .catch((error) => {
 					    console.error(error);
-					    throw new functions.https.HttpsError(error);
+					    return 
 					  });
 				});
 
@@ -259,7 +272,7 @@ function getTitlefromServiceRequestType(type) {
 			}
 }
 
-exports.notifyUserofEventCreation = function(snap, context, db) {
+exports.notifyUserofEventCreation = function(snap, context, db, admin) {
 	var newValue = snap.data();
 	const officeUIDs = newValue.officeUIDs || null;
 	const eventName = newValue.title || "No Event Name";
@@ -271,18 +284,24 @@ exports.notifyUserofEventCreation = function(snap, context, db) {
 			return db.collection('users').where('offices','array-contains',x).get()
 			.then( docSnapshots => {
 				const docsData = docSnapshots.docs.map( x => x.data() );
+				console.log(docsData);
 				return docsData;
 			})
 			.then( usersData => {
+				console.log(usersData);
 						return usersData.map( x => {
 								const registrationTokens = x.registrationToken || null;
+
+								if (registrationTokens === null) { 
+									return 
+								}
 
 								const notificationTitle = "New Event: "+eventName;
 								const notBody = eventSubtitle;
 								newValue.notificationTitle = notificationTitle;
 								newValue.notificationBody = notBody;
 
-								 return registrationTokens.forEach( x => {
+								 var promises = registrationTokens.map( x => {
 									var message = {
 										"token" : x,
 										"notification" : {
@@ -317,13 +336,20 @@ exports.notifyUserofEventCreation = function(snap, context, db) {
 													return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({'uid': docRef.id});
 												})
 												.catch( error => {
-													throw new functions.https.HttpsError(error);
+													console.log("error: "+x);
+													return 
 												})
 										})
 										.catch((error) => {
 											console.error(error);
 											throw new functions.https.HttpsError(error);
 										});
+							})
+
+							return Promise.all(promises)
+							.catch( error => {
+								console.error(error);
+								throw new functions.https.HttpsError(error);
 							})
 						})
 			})
