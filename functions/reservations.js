@@ -138,8 +138,8 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 			return
 		})
 	})
-	.then( x => {
-
+	.then( () => {
+			console.log(deskReservations);
 			var promises = deskReservations.map( x => {
 
 				return db.collection('hotDesks').doc(x.deskUID).get()

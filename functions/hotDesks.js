@@ -14,7 +14,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 	const userUID = context.auth.uid || null;
 	const userEmail = context.auth.token.email || null;
 	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
-
+	var hotDeskName = null;
 
 	if ((startTime === null) || (endTime === null) || (hotDeskUID === null)) {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, and hotDeskUID.');
@@ -48,6 +48,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 			if (docRef.exists) {
 				const data = docRef.data();
 
+				hotDeskName = data.name || "Desk Reservation";
 				const reserveable = data.reserveable;
 				const active = data.active;
 				if ((reserveable === false) || (active === false)) {
@@ -163,7 +164,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 								const location =  officeName+", "+address;
 								const eventName = deskName+" Reservation";
 								const eventData = {
-											eventName: eventName,
+											eventName: hotDeskName,
 											description: "",
 											startTime: startTime,
 											endTime: endTime,

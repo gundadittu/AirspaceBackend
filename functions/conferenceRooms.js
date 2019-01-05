@@ -14,7 +14,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 	const userUID = context.auth.uid || null;
 	const userEmail = context.auth.token.email || null;
 	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
-
+	var conferenceRoomName = null; 
 
 	if ((startTime === null) || (endTime === null) || (conferenceRoomUID === null)) {
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide startTime, endTime, and conferenceRoomUID.');
@@ -47,6 +47,8 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 		.then( docRef => {
 			if (docRef.exists) {
 				const data = docRef.data();
+				const name = data.name || "Room Reservation";
+				conferenceRoomName = name; 
 
 				const reserveable = data.reserveable;
 				const active = data.active;
@@ -99,7 +101,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 	.then( x => {
 		// create conference room reservation
 		return db.collection('conferenceRoomReservations').add({
-			title: reservationTitle,
+			title: conferenceRoomName,
 			note: note,
 			roomUID: conferenceRoomUID,
 			startDate: startTime,
