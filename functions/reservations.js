@@ -21,7 +21,6 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	var roomResQuery = db.collection('conferenceRoomReservations').where('userUID','==',userUID).where('endDate','>=',rangeStart).where('endDate','<=',rangeEnd).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
-		console.log(docsData);
 		roomReservations = docsData;
 		return
 	})
@@ -29,7 +28,6 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	var deskResQuery = db.collection('hotDeskReservations').where('userUID','==',userUID).where('endDate','>=',rangeStart).where('endDate','<=',rangeEnd).where('canceled','==',false).orderBy('endDate','asc').get()
 	.then( docSnapshots => {
 		const docsData = docSnapshots.docs.map( x => x.data() );
-		console.log(docsData);
 		deskReservations = docsData;
 		return
 	})
@@ -127,7 +125,7 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 			}
 			return helperFunctions.getUserData(attendees, db)
 			.then( userData => {
-				x.attendees = userDate
+				x.attendees = userData
 				return x
 			})
 		})
@@ -139,7 +137,6 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 		})
 	})
 	.then( () => {
-			console.log(deskReservations);
 			var promises = deskReservations.map( x => {
 
 				return db.collection('hotDesks').doc(x.deskUID).get()

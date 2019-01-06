@@ -129,7 +129,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 			throw new functions.https.HttpsError(error);
 		})
 	})
-	.then( x => {
+	.then( () => {
 		if (shouldCreateCalendarEvent === false) {
 			console.log("Not creating calendar event.");
 			return
@@ -632,11 +632,9 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 		const upcoming = dict.upcoming;
 		var upcomingPromises = upcoming.map( x => {
 			const attendees = x.attendees || null;
-			console.log(attendees);
 			if ((attendees === null) || (attendees.length === 0)) {
 				return x
 			}
-			console.log(attendees);
 			return helperFunctions.getUserData(attendees, db)
 			.then( userData => {
 				x.attendees = userData
@@ -654,7 +652,6 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 		const past = dict.past;
 		var pastPromises = past.map( x => {
 			const attendees = x.attendees || null;
-			console.log(attendees);
 			if ((attendees === null) || (attendees.length === 0)) {
 				return x
 			}

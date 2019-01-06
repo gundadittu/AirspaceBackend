@@ -1,7 +1,6 @@
-const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 
-exports.createServiceRequest = function(data, context, db) {
+exports.createServiceRequest = function(data, context, db, admin) {
 	const note = data.note || null;
 	const issueType = data.issueType || null;
 	const officeUID = data.officeUID || null;
@@ -154,7 +153,6 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 
 	return Promise.all([open, pending, closed])
 	.then( res => {
-		console.log(dict);
 		return dict
 	})
 	.catch( error => {

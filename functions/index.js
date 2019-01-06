@@ -90,11 +90,11 @@ exports.getUpcomingEventsForUser = functions.https.onCall((data, context) => {
 });
 
 exports.createRegisteredGuest = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.createRegisteredGuest(data, context, db);
+	return registerGuestFunctions.createRegisteredGuest(data, context, db, admin);
 });
 
 exports.updateUserFCMRegToken = functions.https.onCall((data, context) => {
-	return notificationFunctions.updateUserFCMRegToken(data, context, db);
+	return notificationFunctions.updateUserFCMRegToken(data, context, db, admin);
 });
 
 exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => {
@@ -106,7 +106,7 @@ exports.cancelRegisteredGuest = functions.https.onCall((data, context) => {
 });
 
 exports.createServiceRequest = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.createServiceRequest(data, context, db);
+	return serviceRequestFunctions.createServiceRequest(data, context, db, admin);
 });
 
 exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
@@ -766,9 +766,7 @@ exports.getAllOffices = functions.https.onCall((data, context) => {
 			.then( docRef => {
 				if (docRef.exists) {
 					const data = docRef.data()
-					console.log(data);
 					x.buildingName = data.name;
-					console.log(x);
 					return x;
 				} else {
 					throw new functions.https.HttpsError("not-found", "Unable to find office's building with id: ", x.buildingUID);
@@ -978,7 +976,6 @@ exports.addUserToOffice = functions.https.onCall((data, context) => {
 
 	return db.collection("offices").doc(officeUID).get()
 	.then( docRef => {
-		console.log('1');
 		if (docRef.exists) {
 			const data = docRef.data();
 			const officeCompanyUID = data.companyUID;
@@ -988,7 +985,6 @@ exports.addUserToOffice = functions.https.onCall((data, context) => {
 		}
 	})
 	.then ( officeCompanyUID => {
-		console.log('2');
 		return db.collection('users').doc(userUID).get()
 		.then( docRef => {
 			if (docRef.exists) {
@@ -998,26 +994,21 @@ exports.addUserToOffice = functions.https.onCall((data, context) => {
 					if (userCompanies.indexOf(officeCompanyUID) > -1) {
 						return
 					} else {
-						console.log('perm-den');
 						throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
 					}
 				} else {
-					console.log('perm-den 2');
 					throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
 				}
 			} else {
-				console.log('not-found');
 				throw new functions.https.HttpsError('not-found', "Unable to find companyUID for user: ", userUID);
 			}
 		})
 		.catch( error => {
-			console.log('3');
 			console.error(error);
 			throw new functions.https.HttpsError(error);
 		})
 	})
 	.then( () => {
-		console.log('3');
 		const dbop1 = db.collection('users').doc(userUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
 
 		const dbop2 = db.collection('offices').doc(officeUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})

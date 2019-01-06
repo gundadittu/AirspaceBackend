@@ -50,7 +50,6 @@ exports.getUserData = function(userUIDs, db) {
 	if ((userUIDs === null) || (userUIDs.length === 0)) {
 		return
 	}
-	console.log(userUIDs);
 	var promises = userUIDs.map(x => {
 		return db.collection('users').doc(x).get()
 		.then( docRef => {
