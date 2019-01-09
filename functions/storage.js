@@ -84,3 +84,87 @@ exports.getEventImageURL = function(eventUID, admin) {
     throw new functions.https.HttpsError(error);
   })
 }
+
+exports.getOnboardingURL = function(officeUID, admin) {
+  if (officeUID === null) {
+    throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
+  }
+
+  const today = new Date();
+  var tomorrow = new Date();
+  tomorrow.setDate(today.getDate()+1);
+  const tomorrowString = tomorrow.toString();
+
+  const bucket = admin.storage().bucket();
+
+  const config = {
+    action: 'read',
+    expires: tomorrowString
+  };
+
+  const file = bucket.file('onboardingPDFs/'+officeUID+'.pdf');
+  return file.getSignedUrl(config)
+  .then( data => {
+      const url = data[0];
+      return url;
+  })
+  .catch(error => {
+    throw new functions.https.HttpsError(error);
+  })
+}
+
+exports.getFloorplanURL = function(officeUID, admin) {
+  if (officeUID === null) {
+    throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
+  }
+
+  const today = new Date();
+  var tomorrow = new Date();
+  tomorrow.setDate(today.getDate()+1);
+  const tomorrowString = tomorrow.toString();
+
+  const bucket = admin.storage().bucket();
+
+  const config = {
+    action: 'read',
+    expires: tomorrowString
+  };
+
+  const file = bucket.file('floorplanPDFs/'+officeUID+'.jpg');
+  return file.getSignedUrl(config)
+  .then( data => {
+      const url = data[0];
+      return url;
+  })
+  .catch(error => {
+    throw new functions.https.HttpsError(error);
+  })
+}
+
+exports.getBuildingDetailsURL = function(officeUID, admin) {
+  if (officeUID === null) {
+    throw new functions.https.HttpsError('invalid-arguments','Need to provide officeUID.');
+  }
+
+  const today = new Date();
+  var tomorrow = new Date();
+  tomorrow.setDate(today.getDate()+1);
+  const tomorrowString = tomorrow.toString();
+
+  const bucket = admin.storage().bucket();
+
+  const config = {
+    action: 'read',
+    expires: tomorrowString
+  };
+
+  const file = bucket.file('buildingDetailPDFs/'+officeUID+'.pdf');
+  return file.getSignedUrl(config)
+  .then( data => {
+      const url = data[0];
+      return url;
+  })
+  .catch(error => {
+    throw new functions.https.HttpsError(error);
+  })
+}

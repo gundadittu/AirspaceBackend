@@ -133,10 +133,49 @@ exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	return officeFunctions.getEmployeesForOffice(data, context, db);
 });
 
+exports.getSpaceInfoForUser = functions.https.onCall((data, context) => { 
+	return officeFunctions.getSpaceInfoForUser(data, context, db, admin);
+});
+
 // *--- ADMIN FUNCTIONS ----*
 
+
+exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
+	const userEmail = data.email || null; 
+	if (userEmail === null) { 
+		throw new functions.https.HttpsError('invalid-argument','Must provide email.');
+	}
+
+	return admin.auth().getUserByEmail(userEmail)
+	.then( userRecord => { 
+		const userUID = userRecord.uid || null;
+		if (userUID === null) {
+			throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+		}
+
+		return db.collection('users').doc(userUID).get()
+		.then( docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				const type = data.type || null;
+				return {"type": type};
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+			}
+		})
+		.catch( error => {
+			console.error(error);
+			throw new functions.https.HttpsError(error);
+		})
+	})
+	.catch(error => { 
+		console.error(error); 
+		throw new functions.https.HttpsError(error);
+	})
+});
+
 exports.getUserType = functions.https.onCall((data, context) => {
-	const userUID = context.auth.uid || null;
+	const userUID = context.auth.uid;
 	if (userUID === null) {
 		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
 	}
