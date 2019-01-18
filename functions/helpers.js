@@ -1,5 +1,10 @@
 const functions = require('firebase-functions');
 
+exports.validateUserType = function(type) { 
+	const types = ['regular','landlord','receptionist','admin'];
+	return types.includes(type);
+}
+
 exports.getExpandedOfficeData = function(officeUIDs, db) {
 			const officePromises = officeUIDs.map( y => {
 				return db.collection('offices').doc(y).get()

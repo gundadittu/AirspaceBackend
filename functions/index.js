@@ -16,6 +16,8 @@ const notificationFunctions = require('./notifications');
 const serviceRequestFunctions = require('./serviceRequests');
 const registerGuestFunctions = require('./registerGuests');
 const officeFunctions = require('./offices');
+const officeAdminFunctions = require('./officeAdmin');
+const helperFunctions = require('./helpers');
 
 var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
@@ -136,6 +138,13 @@ exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 exports.getSpaceInfoForUser = functions.https.onCall((data, context) => { 
 	return officeFunctions.getSpaceInfoForUser(data, context, db, admin);
 });
+
+// *---- OFFICE ADMIN FUNCTIONS ---* 
+
+exports.getAllUsersForOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getAllUsersForOffice(data, context, db);
+});
+
 
 // *--- ADMIN FUNCTIONS ----*
 
@@ -262,6 +271,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 });
 
 
+
 exports.createUser = functions.https.onCall((data, context) => {
 
 	const firstName = data.firstName || null;
@@ -270,6 +280,10 @@ exports.createUser = functions.https.onCall((data, context) => {
 	const userType = data.type;
 	const pwrd = data.password || "Airspaceoffice2019";
 
+	if (helperFunctions.validateUserType(userType) === false) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide a valid user type.');
+	}
+
   return admin.auth().createUser({
 		  displayName: firstName + " " + lastName,
 	    email: emailAdd,
@@ -277,7 +291,7 @@ exports.createUser = functions.https.onCall((data, context) => {
 	    password: pwrd,
 	    disabled: false
 	}).then( user => {
-		const uid = String(user.uid)
+		const uid = String(user.uid);
 		// Setting user type in database
 	    return db.collection("users").doc(uid).set({
 				"firstName": firstName,
@@ -285,12 +299,12 @@ exports.createUser = functions.https.onCall((data, context) => {
 				"email": emailAdd,
 			  "type": userType,
 				"uid": uid
-			})
-			.catch( error => {
-				// fix error
-				console.error(error)
-				throw new functions.https.HttpsError('internal', 'Failed to add user data to database.');
-		  })
+		})
+		.catch( error => {
+			// fix error
+			console.error(error)
+			throw new functions.https.HttpsError('internal', 'Failed to add user data to database.');
+		})
 	}).catch( error =>  {
 		// fix error
 		console.error(error)
@@ -1205,3 +1219,5 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError(error);
 	})
 });
+
+
