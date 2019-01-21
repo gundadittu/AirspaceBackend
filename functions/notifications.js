@@ -14,7 +14,7 @@ exports.getUsersNotifications = function (data, context, db) {
 		})
 		.catch(error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 }
 
@@ -36,7 +36,7 @@ exports.updateUserFCMRegToken = function (data, context, db, admin) {
 			})
 			.catch(error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		promises.push(dbop1);
 	}
@@ -49,7 +49,7 @@ exports.updateUserFCMRegToken = function (data, context, db, admin) {
 			})
 			.catch(error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		promises.push(dbop2);
 	}
@@ -57,7 +57,7 @@ exports.updateUserFCMRegToken = function (data, context, db, admin) {
 	return Promise.all(promises)
 		.catch(error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 }
 
@@ -124,7 +124,7 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 						})
 						.catch(error => {
 							console.error(error);
-							throw new functions.https.HttpsError(error);
+							throw error;
 						})
 
 				} else {
@@ -145,13 +145,13 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 						return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
 					})
 					.catch(error => {
-						throw new functions.https.HttpsError(error);
+						throw error;
 					})
 
 			})
 			.catch(error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 	} else {
 		return {}
@@ -246,7 +246,7 @@ exports.notifyUserofServiceRequestStatusChange = function (change, context, db, 
 						return db.collection('userNotifications').doc(hostUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
 					})
 					.catch(error => {
-						throw new functions.https.HttpsError(error);
+						throw error;
 					})
 			})
 	} else {
@@ -365,20 +365,20 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 								})
 								.catch((error) => {
 									console.error(error);
-									throw new functions.https.HttpsError(error);
+									throw error;
 								});
 						});
 
 						return Promise.all(promises)
 							.catch(error => {
 								console.error(error);
-								throw new functions.https.HttpsError(error);
+								throw error;
 							})
 					});
 				})
 				.catch(error => {
 					console.error(error);
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 		});
 

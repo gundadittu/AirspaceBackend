@@ -111,7 +111,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 			canceled: false
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then(docRef => {
@@ -126,7 +126,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then( () => {
@@ -176,7 +176,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 	})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -285,7 +285,7 @@ exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 			})
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		});
 
@@ -298,7 +298,7 @@ exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 		})
 		.catch(error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	})
@@ -311,7 +311,7 @@ exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 				return x
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		});
 
@@ -320,7 +320,7 @@ exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 			return finalRoomData
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then( updatedRoomData => {
@@ -340,12 +340,12 @@ exports.findAvailableConferenceRooms = function(data, context, db, admin) {
 			return finalRoomData;
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -383,18 +383,18 @@ exports.getAllConferenceRoomsForUser = function(data, context, db, admin) {
 	  					return
 	  				})
 	  				.catch(error => {
-						throw new functions.https.HttpsError(error);
+						throw error;
 	  				})
 
 	  			})
 
 	  			return Promise.all(roomPromises)
 	  			.catch(error => {
-	  				throw new functions.https.HttpsError(error);
+	  				throw error;
 	  			})
 	  		})
 	  		.catch( error => {
-	  			throw new functions.https.HttpsError(error);
+	  			throw error;
 			})
 	  	})
 
@@ -403,7 +403,7 @@ exports.getAllConferenceRoomsForUser = function(data, context, db, admin) {
 	  		return conferenceRooms
 	  	})
 	  	.catch( error => {
-	  			throw new functions.https.HttpsError(error);
+	  			throw error;
 	  	})
 
 	})
@@ -424,12 +424,12 @@ exports.getAllConferenceRoomsForUser = function(data, context, db, admin) {
 			return finalRoomData;
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -475,7 +475,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 				return reservations;
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 		.then( reservations => {
@@ -483,7 +483,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	});
@@ -520,7 +520,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 				return reservations;
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 		.then( reservations => {
@@ -528,7 +528,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	});
@@ -545,7 +545,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 	  			return x
 	  		})
 	  		.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 	  		})
 		})
 
@@ -555,7 +555,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	})
@@ -570,7 +570,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 	  			return x
 	  		})
 	  		.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 	  		})
 		})
 
@@ -580,7 +580,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	})
@@ -673,7 +673,7 @@ exports.getAllConferenceRoomReservationsForUser = function(data, context, db, ad
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -707,7 +707,7 @@ exports.cancelRoomReservation = function(data, context, db) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -844,7 +844,7 @@ exports.updateConferenceRoomReservation = function(data, context, db) {
 		return db.collection('conferenceRoomReservations').doc(reservationUID).update(dict)
 		.catch( error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 }

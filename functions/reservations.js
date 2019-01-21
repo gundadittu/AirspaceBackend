@@ -63,14 +63,14 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 					return reservations;
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			})
 			.then( roomReservations => {
 				return roomReservations
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 
 	})
@@ -84,7 +84,7 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	  			return x
 	  		})
 	  		.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 	  		})
 		})
 
@@ -93,7 +93,7 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 			return updatedRoomReservationData
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	})
@@ -167,14 +167,14 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 					return reservationData;
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			})
 			.then( reservations => {
 				return reservations
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 
 	})
@@ -188,7 +188,7 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 							return x
 					})
 					.catch(error => {
-							throw new functions.https.HttpsError(error);
+							throw error;
 					})
 			})
 
@@ -197,7 +197,7 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 				return updatedDeskReservationData
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 
 	})
@@ -231,6 +231,6 @@ exports.getUsersReservationsForRange = function(data, context, db, admin) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }

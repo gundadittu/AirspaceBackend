@@ -33,7 +33,7 @@ exports.createServiceRequest = function(data, context, db, admin) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -49,7 +49,7 @@ exports.cancelServiceRequest = function(data, context, db) {
 	return db.collection("serviceRequests").doc(serviceRequestID).update({'canceled':true})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -74,7 +74,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 					return x
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			} else {
 				return x
@@ -87,7 +87,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	});
 
@@ -104,7 +104,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 					return x
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			} else {
 				return x
@@ -117,7 +117,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	});
 
@@ -134,7 +134,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 					return x
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			} else {
 				return x
@@ -147,7 +147,7 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	});
 
@@ -157,6 +157,6 @@ exports.getUsersServiceRequests = function(data, context, db)  {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }

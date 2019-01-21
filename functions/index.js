@@ -18,6 +18,7 @@ const registerGuestFunctions = require('./registerGuests');
 const officeFunctions = require('./offices');
 const officeAdminFunctions = require('./officeAdmin');
 const helperFunctions = require('./helpers');
+const emailHelperFunctions = require('./emailHelper');
 
 var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
@@ -142,12 +143,19 @@ exports.getSpaceInfoForUser = functions.https.onCall((data, context) => {
 // *---- OFFICE ADMIN FUNCTIONS ---* 
 
 exports.getAllUsersForOffice = functions.https.onCall((data, context) => { 
+	emailHelperFunctions.sendUserCreationEmail({recipientEmail: 'gundadittu@gmail.com'});
 	return officeAdminFunctions.getAllUsersForOffice(data, context, db);
 });
 
+exports.addUserToOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.addUserToOffice(data, context, db, admin);
+});
+
+exports.removeUserFromOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.removeUserFromOffice(data, context, db, admin);
+});
 
 // *--- ADMIN FUNCTIONS ----*
-
 
 exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
 	const userEmail = data.email || null; 
@@ -159,7 +167,7 @@ exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
 	.then( userRecord => { 
 		const userUID = userRecord.uid || null;
 		if (userUID === null) {
-			throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+			throw new functions.https.HttpsError('not-found', 'User not found.');
 		}
 
 		return db.collection('users').doc(userUID).get()
@@ -174,12 +182,44 @@ exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
 		})
 		.catch( error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch(error => { 
 		console.error(error); 
-		throw new functions.https.HttpsError(error);
+		throw error;
+	})
+});
+
+exports.getUserInfo = functions.https.onCall((data, context) => { 
+	const userUID = context.auth.uid;
+	if (userUID === null) {
+		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+	}
+
+	return db.collection('users').doc(userUID).get()
+	.then( docRef => {
+		if (docRef.exists) {
+			const data = docRef.data();
+			return data;
+		} else {
+			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+		}
+	})
+	.then( data => { 
+		const officeAdmin = data.officeAdmin || null;
+		if ((officeAdmin === null) || (officeAdmin.length === 0)) { 
+			return data 
+		}
+		return helperFunctions.getExpandedOfficeData(officeAdmin, db)
+		.then( officeData => { 
+			data.officeAdmin = officeData;
+			return data; 
+		})
+	})
+	.catch( error => {
+		console.error(error);
+		throw error;
 	})
 });
 
@@ -200,7 +240,7 @@ exports.getUserType = functions.https.onCall((data, context) => {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 });
 
@@ -232,7 +272,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 			} )
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		}
 		));
@@ -254,7 +294,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 			} )
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		}
 		));
@@ -266,50 +306,12 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 });
 
-
-
 exports.createUser = functions.https.onCall((data, context) => {
-
-	const firstName = data.firstName || null;
-	const lastName = data.lastName || null;
-	const emailAdd = data.email;
-	const userType = data.type;
-	const pwrd = data.password || "Airspaceoffice2019";
-
-	if (helperFunctions.validateUserType(userType) === false) { 
-		throw new functions.https.HttpsError('invalid-arguments','Need to provide a valid user type.');
-	}
-
-  return admin.auth().createUser({
-		  displayName: firstName + " " + lastName,
-	    email: emailAdd,
-	    emailVerified: true,
-	    password: pwrd,
-	    disabled: false
-	}).then( user => {
-		const uid = String(user.uid);
-		// Setting user type in database
-	    return db.collection("users").doc(uid).set({
-				"firstName": firstName,
-				"lastName": lastName,
-				"email": emailAdd,
-			  "type": userType,
-				"uid": uid
-		})
-		.catch( error => {
-			// fix error
-			console.error(error)
-			throw new functions.https.HttpsError('internal', 'Failed to add user data to database.');
-		})
-	}).catch( error =>  {
-		// fix error
-		console.error(error)
-		throw new functions.https.HttpsError('failed-precondition', 'Failed to create user.');
-	})
+	return helperFunctions.createUser(data, context, db, admin);
 });
 
 exports.getAllUsers = functions.https.onCall((data, context) => {
@@ -396,7 +398,7 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 
 });
@@ -428,14 +430,9 @@ exports.triggerUserBioInfoUpdate = functions.firestore.document('users/{uid}').o
 		return
 	})
 	.catch( (error) => {
-		throw new functions.https.HttpsError("internal-error", "Unable to add user changes into database.");
+		console.error(error);
+		throw error;
 	})
-});
-
-// NEED TO SEND WELCOME EMAIL HERE ON NEW USER CREATION with password setup instructions
-exports.sendWelcomeEmail = functions.auth.user().onCreate((user) => {
-  console.log("New User created");
-	return
 });
 
 exports.deleteUser = functions.https.onCall((data, context) => {
@@ -737,7 +734,7 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 			} )
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		}
 		));
@@ -756,7 +753,7 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 			} )
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		}
 		));
@@ -951,7 +948,7 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 			} )
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		}));
 
@@ -962,7 +959,7 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 		})
 		.catch( error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch( error => {
@@ -1019,68 +1016,68 @@ exports.addOfficeToCompany = functions.https.onCall((data, context) => {
 
 });
 
-exports.addUserToOffice = functions.https.onCall((data, context) => {
-	const officeUID = data.officeUID || null;
-	const userUID = data.userUID || null;
+// exports.addUserToOffice = functions.https.onCall((data, context) => {
+// 	const officeUID = data.officeUID || null;
+// 	const userUID = data.userUID || null;
 
-	if (officeUID === null || userUID === null) {
-		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and userUID.");
-	}
+// 	if (officeUID === null || userUID === null) {
+// 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and userUID.");
+// 	}
 
-	return db.collection("offices").doc(officeUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			const officeCompanyUID = data.companyUID;
-			return officeCompanyUID;
-		} else {
-			throw new functions.https.HttpsError('not-found', "Unable to find companyUID for office: ", officeUID);
-		}
-	})
-	.then ( officeCompanyUID => {
-		return db.collection('users').doc(userUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data()
-				const userCompanies = data.companies || null;
-				if (userCompanies !== null) {
-					if (userCompanies.indexOf(officeCompanyUID) > -1) {
-						return
-					} else {
-						throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
-					}
-				} else {
-					throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
-				}
-			} else {
-				throw new functions.https.HttpsError('not-found', "Unable to find companyUID for user: ", userUID);
-			}
-		})
-		.catch( error => {
-			console.error(error);
-			throw new functions.https.HttpsError(error);
-		})
-	})
-	.then( () => {
-		const dbop1 = db.collection('users').doc(userUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
+// 	return db.collection("offices").doc(officeUID).get()
+// 	.then( docRef => {
+// 		if (docRef.exists) {
+// 			const data = docRef.data();
+// 			const officeCompanyUID = data.companyUID;
+// 			return officeCompanyUID;
+// 		} else {
+// 			throw new functions.https.HttpsError('not-found', "Unable to find companyUID for office: ", officeUID);
+// 		}
+// 	})
+// 	.then ( officeCompanyUID => {
+// 		return db.collection('users').doc(userUID).get()
+// 		.then( docRef => {
+// 			if (docRef.exists) {
+// 				const data = docRef.data()
+// 				const userCompanies = data.companies || null;
+// 				if (userCompanies !== null) {
+// 					if (userCompanies.indexOf(officeCompanyUID) > -1) {
+// 						return
+// 					} else {
+// 						throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
+// 					}
+// 				} else {
+// 					throw new functions.https.HttpsError('permission-denied', "User is not part of the same company as office.", officeCompanyUID);
+// 				}
+// 			} else {
+// 				throw new functions.https.HttpsError('not-found', "Unable to find companyUID for user: ", userUID);
+// 			}
+// 		})
+// 		.catch( error => {
+// 			console.error(error);
+// 			throw error;
+// 		})
+// 	})
+// 	.then( () => {
+// 		const dbop1 = db.collection('users').doc(userUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
 
-		const dbop2 = db.collection('offices').doc(officeUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})
+// 		const dbop2 = db.collection('offices').doc(officeUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})
 
-		return Promise.all([dbop1, dbop2])
-		.then (docRefs => {
-			console.log("Successfully added user to office.");
-			return
-		})
-		.catch( error => {
-			console.error(error);
-			throw new functions.https.HttpsError('internal', 'There was an issue updating the database.');
-		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw new functions.https.HttpsError(error);
-	})
-});
+// 		return Promise.all([dbop1, dbop2])
+// 		.then (docRefs => {
+// 			console.log("Successfully added user to office.");
+// 			return
+// 		})
+// 		.catch( error => {
+// 			console.error(error);
+// 			throw new functions.https.HttpsError('internal', 'There was an issue updating the database.');
+// 		})
+// 	})
+// 	.catch( error => {
+// 		console.error(error);
+// 		throw error;
+// 	})
+// });
 
 exports.addUserToCompany = functions.https.onCall((data, context) => {
 	const companyUID = data.companyUID || null;
@@ -1101,7 +1098,7 @@ exports.addUserToCompany = functions.https.onCall((data, context) => {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 });
 
@@ -1137,7 +1134,7 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 			})
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		} else {
 			throw new functions.https.HttpsError('not-found','Unable to find office in database');
@@ -1145,7 +1142,7 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 });
 
@@ -1178,7 +1175,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 				}
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 
@@ -1187,7 +1184,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 			return officeProfiles;
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then( officeData => {
@@ -1202,7 +1199,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 				return x
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 
@@ -1211,12 +1208,12 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 			return newOfficeData;
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 });
 

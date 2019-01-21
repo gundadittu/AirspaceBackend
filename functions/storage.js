@@ -25,7 +25,7 @@ exports.getConferenceRoomImageURL = function(roomUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }
 
@@ -53,7 +53,7 @@ exports.getDeskImageURL = function(deskUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }
 
@@ -81,7 +81,7 @@ exports.getEventImageURL = function(eventUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }
 
@@ -109,7 +109,7 @@ exports.getOnboardingURL = function(officeUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }
 
@@ -137,7 +137,7 @@ exports.getFloorplanURL = function(officeUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }
 
@@ -165,6 +165,6 @@ exports.getBuildingDetailsURL = function(officeUID, admin) {
       return url;
   })
   .catch(error => {
-    throw new functions.https.HttpsError(error);
+    throw error;
   })
 }

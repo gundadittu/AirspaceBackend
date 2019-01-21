@@ -107,7 +107,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 			canceled: false
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then(docRef => {
@@ -122,7 +122,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then( x => {
@@ -184,7 +184,7 @@ exports.createHotDeskReservation = function(data, context, db) {
 	})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -271,7 +271,7 @@ exports.findAvailableHotDesks = function(data, context, db, admin) {
 			})
 			.catch( error => {
 				console.error(error);
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		});
 
@@ -284,7 +284,7 @@ exports.findAvailableHotDesks = function(data, context, db, admin) {
 		})
 		.catch(error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	})
@@ -300,7 +300,7 @@ exports.findAvailableHotDesks = function(data, context, db, admin) {
 				return x
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		});
 
@@ -309,7 +309,7 @@ exports.findAvailableHotDesks = function(data, context, db, admin) {
 			return finalDeskData
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.then( deskData => {
@@ -329,12 +329,12 @@ exports.findAvailableHotDesks = function(data, context, db, admin) {
 			return desks;
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -372,18 +372,18 @@ exports.getAllHotDesksForUser = function(data, context, db, admin) {
 	  					return
 	  				})
 	  				.catch(error => {
-						throw new functions.https.HttpsError(error);
+						throw error;
 	  				})
 
 	  			})
 
 	  			return Promise.all(roomPromises)
 	  			.catch(error => {
-	  				throw new functions.https.HttpsError(error);
+	  				throw error;
 	  			})
 	  		})
 	  		.catch( error => {
-	  			throw new functions.https.HttpsError(error);
+	  			throw error;
 				})
 	  	})
 
@@ -408,17 +408,17 @@ exports.getAllHotDesksForUser = function(data, context, db, admin) {
 					return desks;
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			})
 	  	.catch( error => {
-	  		throw new functions.https.HttpsError(error);
+	  		throw error;
 	  	})
 
 	})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -464,7 +464,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 				return reservationData;
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 		.then( reservations => {
@@ -472,7 +472,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	});
@@ -510,7 +510,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 				return reservationData;
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 		})
 		.then( reservations => {
@@ -518,7 +518,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 			return
 		})
 		.catch(error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 
 	});
@@ -536,7 +536,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 		  			return x
 		  		})
 		  		.catch(error => {
-							throw new functions.https.HttpsError(error);
+							throw error;
 		  		})
 			})
 
@@ -546,7 +546,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 				return
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 
 	})
@@ -561,7 +561,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 		  			return x
 		  		})
 		  		.catch(error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 		  		})
 			})
 
@@ -571,7 +571,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 				return
 			})
 			.catch( error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 	})
 	.then( x => {
@@ -623,7 +623,7 @@ exports.getAllHotDeskReservationsForUser = function(data, context, db, admin) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -656,7 +656,7 @@ exports.cancelHotDeskReservation = function(data, context, db) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -789,7 +789,7 @@ exports.updateHotDeskReservation = function(data, context, db) {
 		return db.collection('hotDeskReservations').doc(reservationUID).update(dict)
 		.catch( error => {
 			console.error(error);
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 }

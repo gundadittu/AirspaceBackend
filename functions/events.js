@@ -48,7 +48,7 @@ exports.getUpcomingEventsForUser = function(data, context, db, admin) {
 					return eventData;
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			})
 			.then( eventData => {
@@ -68,6 +68,6 @@ exports.getUpcomingEventsForUser = function(data, context, db, admin) {
 	})
 	.catch(error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }

@@ -6,6 +6,72 @@ exports.validateUserType = function(type) {
 }
 
 exports.getExpandedOfficeData = function(officeUIDs, db) {
+	return getExpandedOfficeData(officeUIDs, db);
+}
+
+exports.getUserData = function(userUIDs, db) {
+	return getUserData(userUIDs, db);
+}
+
+exports.createUser = function(data, context, db, admin) {
+	return createUser(data, context, db, admin);
+}
+
+function createUser(data, context, db, admin) { 
+	const firstName = data.firstName || null;
+	const lastName = data.lastName || null;
+	const emailAdd = data.email;
+	const userType = data.type;
+	const pwrd = data.password || "Airspaceoffice2019";
+
+	if (helperFunctions.validateUserType(userType) === false) { 
+		throw new functions.https.HttpsError('invalid-arguments','Need to provide a valid user type.');
+	}
+	return admin.auth().getUserByEmail(userEmail)
+	.then( userRecord => { 
+		const userUID = userRecord.uid || null;
+		if (userUID === null) {
+			// This will go to the catch clause below and create user 
+			throw new functions.https.HttpsError('not-found','User not found.'); 
+		} else { 
+			return userUID
+		}
+	})
+	.catch(error => { 
+		// User does not already exist, so create new user 
+		return admin.auth().createUser({
+			displayName: firstName + " " + lastName,
+		  email: emailAdd,
+		  emailVerified: true,
+		  password: pwrd,
+		  disabled: false
+	  }).then( user => {
+		  const uid = String(user.uid);
+		  // Setting user type in database
+		  return db.collection("users").doc(uid).set({
+				  "firstName": firstName,
+				  "lastName": lastName,
+				  "email": emailAdd,
+				"type": userType,
+				  "uid": uid
+		  })
+		  .then( () => { 
+			  return uid;
+		  })
+		  .catch( error => {
+			  // fix error
+			  console.error(error)
+			  throw new functions.https.HttpsError('internal', 'Failed to add user data to database.');
+		  })
+	  }).catch( error =>  {
+		  // fix error
+		  console.error(error)
+		  throw new functions.https.HttpsError('failed-precondition', 'Failed to create user.');
+	  })
+	})
+}
+
+function getExpandedOfficeData(officeUIDs, db) {
 			const officePromises = officeUIDs.map( y => {
 				return db.collection('offices').doc(y).get()
 				.then( docRef => {
@@ -16,7 +82,7 @@ exports.getExpandedOfficeData = function(officeUIDs, db) {
 					}
 				})
 				.catch(error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			});
 
@@ -33,7 +99,7 @@ exports.getExpandedOfficeData = function(officeUIDs, db) {
 						return x
 					})
 					.catch( error => {
-						throw new functions.https.HttpsError(error);
+						throw error;
 					})
 				});
 
@@ -43,15 +109,15 @@ exports.getExpandedOfficeData = function(officeUIDs, db) {
 				})
 				.catch(error => {
 					console.error(error);
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			})
 			.catch(error => {
-				throw new functions.https.HttpsError(error);
+				throw error;
 			})
 }
 
-exports.getUserData = function(userUIDs, db) {
+function getUserData(userUIDs, db) { 
 	if ((userUIDs === null) || (userUIDs.length === 0)) {
 		return
 	}
@@ -64,6 +130,21 @@ exports.getUserData = function(userUIDs, db) {
 				return {'uid':x }
 			}
 		})
+		.then( (user) => { 
+			const offices = user.offices || null;
+			if (offices === null) { 
+				return user 
+			}
+			return getExpandedOfficeData(offices, db)
+			.then( officeData => { 
+				user.offices = officeData; 
+				return user 
+			})
+			.catch(error => { 
+				console.error(error);
+				return user 
+			})
+		})
 	})
 
 	return Promise.all(promises)
@@ -72,6 +153,6 @@ exports.getUserData = function(userUIDs, db) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }

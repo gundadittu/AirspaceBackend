@@ -47,7 +47,7 @@ exports.createRegisteredGuest = function(data, context, db, admin) {
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
 
@@ -70,7 +70,7 @@ exports.getUsersRegisteredGuests = function(data, context, db) {
 					return x
 				})
 				.catch( error => {
-					throw new functions.https.HttpsError(error);
+					throw error;
 				})
 			} else {
 				return x
@@ -138,11 +138,11 @@ exports.cancelRegisteredGuest = function(data, context, db) {
 			return
 		})
 		.catch( error => {
-			throw new functions.https.HttpsError(error);
+			throw error;
 		})
 	})
 	.catch( error => {
 		console.error(error);
-		throw new functions.https.HttpsError(error);
+		throw error;
 	})
 }
