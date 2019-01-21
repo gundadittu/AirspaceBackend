@@ -217,6 +217,17 @@ exports.getUserInfo = functions.https.onCall((data, context) => {
 			return data; 
 		})
 	})
+	.then( data => { 
+		const userOffices = data.offices || null;
+		if ((userOffices === null) || (userOffices.length === 0)) { 
+			return data 
+		}
+		return helperFunctions.getExpandedOfficeData(userOffices, db)
+		.then( officeData => { 
+			data.offices = officeData;
+			return data; 
+		})
+	})
 	.catch( error => {
 		console.error(error);
 		throw error;
