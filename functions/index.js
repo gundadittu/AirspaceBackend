@@ -143,7 +143,6 @@ exports.getSpaceInfoForUser = functions.https.onCall((data, context) => {
 // *---- OFFICE ADMIN FUNCTIONS ---* 
 
 exports.getAllUsersForOffice = functions.https.onCall((data, context) => { 
-	emailHelperFunctions.sendUserCreationEmail({recipientEmail: 'gundadittu@gmail.com'});
 	return officeAdminFunctions.getAllUsersForOffice(data, context, db);
 });
 
