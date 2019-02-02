@@ -19,7 +19,7 @@ const officeFunctions = require('./offices');
 const officeAdminFunctions = require('./officeAdmin');
 const helperFunctions = require('./helpers');
 const emailHelperFunctions = require('./emailHelper');
-
+const storageFunctions = require('./storage');
 var db = admin.firestore();
 const settings = {timestampsInSnapshots: true};
 db.settings(settings);
@@ -154,6 +154,36 @@ exports.removeUserFromOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.removeUserFromOffice(data, context, db, admin);
 });
 
+exports.editUserForOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.editUserForOffice(data, context, db, admin);
+})
+
+exports.getAllConferenceRoomsForOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getAllConferenceRoomsForOffice(data, context, db, admin);
+});
+
+exports.getAllHotDesksForOffice = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getAllHotDesksForOffice(data, context, db);
+});
+
+exports.addConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.addConferenceRoomForOfficeAdmin(data, context, db);
+});
+exports.addHotDeskForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.addHotDeskForOfficeAdmin(data, context, db);
+});
+
+exports.editConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.editConferenceRoomForOfficeAdmin(data, context, db);
+})
+
+exports.editHotDeskForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.editHotDeskForOfficeAdmin(data, context, db);
+})
+exports.getAllRegisteredGuestsForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getAllRegisteredGuestsForOfficeAdmin(data, context, db);
+})
+
 // *--- ADMIN FUNCTIONS ----*
 
 exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
@@ -224,6 +254,18 @@ exports.getUserInfo = functions.https.onCall((data, context) => {
 		return helperFunctions.getExpandedOfficeData(userOffices, db)
 		.then( officeData => { 
 			data.offices = officeData;
+			return data; 
+		})
+	})
+	.then( data => { 
+		const currUserUID = data.uid || null;
+		if (currUserUID === null) { 
+			return data; 
+		}
+		
+		return storageFunctions.getProfileImageURL(currUserUID, admin)
+		.then( url => { 
+			data.profileImageURL = url;
 			return data; 
 		})
 	})

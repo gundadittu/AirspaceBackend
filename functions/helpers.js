@@ -1,6 +1,10 @@
 const functions = require('firebase-functions');
 
 exports.validateUserType = function(type) { 
+	return validateUserType(type);
+}
+
+function validateUserType(type) { 
 	const types = ['regular','landlord','receptionist','admin'];
 	return types.includes(type);
 }
@@ -24,10 +28,10 @@ function createUser(data, context, db, admin) {
 	const userType = data.type;
 	const pwrd = data.password || "Airspaceoffice2019";
 
-	if (helperFunctions.validateUserType(userType) === false) { 
+	if (validateUserType(userType) === false) { 
 		throw new functions.https.HttpsError('invalid-arguments','Need to provide a valid user type.');
 	}
-	return admin.auth().getUserByEmail(userEmail)
+	return admin.auth().getUserByEmail(emailAdd)
 	.then( userRecord => { 
 		const userUID = userRecord.uid || null;
 		if (userUID === null) {
