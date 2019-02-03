@@ -461,7 +461,7 @@ exports.addHotDeskForOfficeAdmin = function (data, context, db) {
             if (name !== null) {
                 dict['name'] = name;
             }
-         
+
             if (address !== null) {
                 dict['address'] = address;
             }
@@ -632,58 +632,58 @@ exports.editHotDeskForOfficeAdmin = function (data, context, db) {
     }
 
     return db.collection('hotDesks').doc(selectedDeskUID).get()
-    .then(docRef => {
-        if (docRef.exists) {
-            const data = docRef.data();
-            const officeUIDs = data.officeUIDs || null;
-            if (officeUIDs === null) {
-                throw new functions.https.HttpsError('not-found', 'No office associated with hot desk of selectedDeskUID.');
-            }
-            return officeUIDs;
-        } else {
-            throw new functions.https.HttpsError('not-found', 'No hot desk with selectedDeskUID found.');
-        }
-    })
-    .then(officeUIDs => {
-        return db.collection('users').doc(userUID).get()
-            .then(docRef => {
-                if (docRef.exists) {
-                    const data = docRef.data();
-                    const adminOfficeUIDs = data.officeAdmin || null;
-                    if (adminOfficeUIDs === null) {
-                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
-                    }
-                    let found = false;
-                    officeUIDs.forEach(x => {
-                        if (adminOfficeUIDs.includes(x) === true) {
-                            found = true;
-                        }
-                    })
-
-                    if (found === false) {
-                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
-                    }
-
-                    return
-                } else {
-                    throw new functions.https.HttpsError('not-found', 'This user was not found in the database.');
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeUIDs = data.officeUIDs || null;
+                if (officeUIDs === null) {
+                    throw new functions.https.HttpsError('not-found', 'No office associated with hot desk of selectedDeskUID.');
                 }
-            })
-    })
-    .then(() => {
-        let dict = {};
+                return officeUIDs;
+            } else {
+                throw new functions.https.HttpsError('not-found', 'No hot desk with selectedDeskUID found.');
+            }
+        })
+        .then(officeUIDs => {
+            return db.collection('users').doc(userUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data();
+                        const adminOfficeUIDs = data.officeAdmin || null;
+                        if (adminOfficeUIDs === null) {
+                            throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                        }
+                        let found = false;
+                        officeUIDs.forEach(x => {
+                            if (adminOfficeUIDs.includes(x) === true) {
+                                found = true;
+                            }
+                        })
 
-        if (deskName !== null) {
-            dict['name'] = deskName;
-        }
-        if (reserveable !== null) {
-            dict['reserveable'] = reserveable;
-        }
-        if (active !== null) {
-            dict['active'] = active;
-        }
-        return db.collection('hotDesks').doc(selectedDeskUID).update(dict);
-    })
+                        if (found === false) {
+                            throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                        }
+
+                        return
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'This user was not found in the database.');
+                    }
+                })
+        })
+        .then(() => {
+            let dict = {};
+
+            if (deskName !== null) {
+                dict['name'] = deskName;
+            }
+            if (reserveable !== null) {
+                dict['reserveable'] = reserveable;
+            }
+            if (active !== null) {
+                dict['active'] = active;
+            }
+            return db.collection('hotDesks').doc(selectedDeskUID).update(dict);
+        })
 }
 
 exports.editConferenceRoomForOfficeAdmin = function (data, context, db) {
@@ -768,44 +768,11 @@ exports.editConferenceRoomForOfficeAdmin = function (data, context, db) {
             }
             return db.collection('conferenceRooms').doc(selectedRoomUID).update(dict);
         })
-}   
-
-exports.getAllRegisteredGuestsForOfficeAdmin = function(data, context, db) { 
-    const userUID = context.auth.uid || null; 
-    const selectedOfficeUID = data.selectedOfficeUID || null; 
-
-    if (userUID === null) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    if (selectedOfficeUID === null) {
-        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
-    }
-
-    return db.collection('users').doc(userUID).get()
-    .then(docRef => {
-        if (docRef.exists) {
-            const data = docRef.data();
-            const officeAdmin = data.officeAdmin;
-            if (officeAdmin.includes(selectedOfficeUID) === false) {
-                throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
-            }
-            return
-        } else {
-            throw new functions.https.HttpsError('permission-denied', 'No such user found.');
-        }
-    })
-    .then( () => { 
-        return db.collection('registeredGuests').where('visitingOfficeUID','==',selectedOfficeUID).get()    
-        .then( (docSnapshots) => { 
-            const docsData = docSnapshots.docs.map(x => x.data());
-            return docsData;
-        })
-    })
 }
 
-exports.getEventsForOfficeAdmin = function(data, context, db, admin) { 
-    const userUID = context.auth.uid || null; 
-    const selectedOfficeUID = data.selectedOfficeUID || null; 
+exports.getAllRegisteredGuestsForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -815,63 +782,171 @@ exports.getEventsForOfficeAdmin = function(data, context, db, admin) {
     }
 
     return db.collection('users').doc(userUID).get()
-    .then( docRef => {
-        if (docRef.exists) {
-            const data = docRef.data();
-            const officeAdmin = data.officeAdmin;
-            if (officeAdmin.includes(selectedOfficeUID) === false) {
-                throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
             }
-            return
-        } else {
-            throw new functions.https.HttpsError('permission-denied', 'No such user found.');
-        }
-    })
-    .then( () => { 
-        return db.collection('events').where('officeUIDs','array-contains',selectedOfficeUID).get()
-        .then( docSnapshots => { 
-            const docsData = docSnapshots.docs.map(x => x.data());
-
-            const promises = docsData.map( x => {
-                return storageFunctions.getEventImageURL(x.uid, admin)
-                .then( url => {
-                    x.imageURL = url;
-                    return x;
+        })
+        .then(() => {
+            return db.collection('registeredGuests').where('visitingOfficeUID', '==', selectedOfficeUID).get()
+                .then((docSnapshots) => {
+                    const docsData = docSnapshots.docs.map(x => x.data());
+                    return docsData;
                 })
-                .catch(error => {
-                    return x;
-                })
-            });
+        })
+}
 
-            return Promise.all(promises)
-            .then( eventData => {
-                return eventData;
+exports.createEventForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const title = data.title || null;
+    const startDate = new Date(data.startDate) || null;
+    const endDate = new Date(data.endDate) || null;
+    const description = data.description || null;
+    let address = null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
+    }
+    if ((title === null) || (startDate === null) || (endDate === null) || (description === null)) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Missing required arguments.');
+    }
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return db.collection('offices').doc(selectedOfficeUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data()
+                        return data.buildingUID;
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'This office does not exist in backend.');
+                    }
+                })
+        })
+        .then(buildingUID => {
+            if (buildingUID === null) {
+                throw new functions.https.HttpsError('not-found', 'This offices building does not exist in backend.');
+            }
+
+            return db.collection('buildings').doc(buildingUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data()
+                        address = data.address;
+                        return
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'This office does not exist in backend.');
+                    }
+                })
+        })
+        .then(() => {
+
+            let dict = { title: title, startDate: startDate, endDate: endDate, description: description, canceled: false, address: address };
+            return db.collection('events').add(dict)
+                .then(docRef => {
+                    return docRef.id;
+                })
+        })
+        .then(uid => {
+            if (uid === null) {
+                throw new functions.https.HttpsError('not-found', 'Unable to add new event to database.');
+            }
+            return db.collection('events').doc(uid).update({ uid: uid });
+        })
+}
+
+exports.getEventsForOfficeAdmin = function (data, context, db, admin) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
+    }
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return db.collection('events').where('officeUIDs', 'array-contains', selectedOfficeUID).get()
+                .then(docSnapshots => {
+                    const docsData = docSnapshots.docs.map(x => x.data());
+
+                    const promises = docsData.map(x => {
+                        return storageFunctions.getEventImageURL(x.uid, admin)
+                            .then(url => {
+                                x.imageURL = url;
+                                return x;
+                            })
+                            .catch(error => {
+                                return x;
+                            })
+                    });
+
+                    return Promise.all(promises)
+                        .then(eventData => {
+                            return eventData;
+                        })
+                })
+        })
+        .then(events => {
+            let upcoming = [];
+            let past = [];
+            events.forEach(x => {
+                const endDate = x.endDate.toDate();
+                const now = new Date();
+                if (endDate < now) {
+                    past.push(x);
+                } else {
+                    upcoming.push(x);
+                }
             })
+            return { upcoming: upcoming, past: past }
         })
-    })
-    .then( events => { 
-        let upcoming = []; 
-        let past = []; 
-        events.forEach( x => { 
-            const endDate = x.endDate.toDate(); 
-            const now = new Date(); 
-            if (endDate < now) { 
-                past.push(x);
-            } else { 
-                upcoming.push(x);
-            }
-        })
-        return { upcoming: upcoming, past: past }
-    })
 }
 
-exports.editEventsForOfficeAdmin = function(data, context, db) { 
-    const userUID = context.auth.uid || null; 
-    const selectedEventUID = data.selectedEventUID || null; 
-    const title = data.title || null; 
-    const startDate = new Date(data.startDate) || null; 
-    const endDate = new Date(data.endDate) || null; 
-    const description = data.description || null; 
+exports.editEventsForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedEventUID = data.selectedEventUID || null;
+    const title = data.title || null;
+    const startDate = new Date(data.startDate) || null;
+    const endDate = new Date(data.endDate) || null;
+    const description = data.description || null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -881,66 +956,132 @@ exports.editEventsForOfficeAdmin = function(data, context, db) {
     }
 
     return db.collection('events').doc(selectedEventUID).get()
-    .then(docRef => {
-        if (docRef.exists) {
-            const data = docRef.data();
-            const officeUIDs = data.officeUID || null;
-            if (officeUIDs === null) {
-                throw new functions.https.HttpsError('not-found', 'No office associated with event of selectedEventUID.');
-            }
-            return officeUIDs;
-        } else {
-            throw new functions.https.HttpsError('not-found', 'No event with selectedEventUID found.');
-        }
-    })
-    .then(officeUIDs => {
-        return db.collection('users').doc(userUID).get()
-            .then(docRef => {
-                if (docRef.exists) {
-                    const data = docRef.data();
-                    const adminOfficeUIDs = data.officeAdmin || null;
-                    if (adminOfficeUIDs === null) {
-                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
-                    }
-                    let found = false;
-                    officeUIDs.forEach(x => {
-                        if (adminOfficeUIDs.includes(x) === true) {
-                            found = true;
-                        }
-                    })
-
-                    if (found === false) {
-                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
-                    }
-
-                    return
-                } else {
-                    throw new functions.https.HttpsError('not-found', 'This user was not found in the database.');
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeUIDs = data.officeUID || null;
+                if (officeUIDs === null) {
+                    throw new functions.https.HttpsError('not-found', 'No office associated with event of selectedEventUID.');
                 }
-            })
-    })
-    .then( () => { 
-
-        let dict = {};
-        if (title) { 
-            dict['title'] = title;
-        }
-
-        if ((startDate) && (endDate)) { 
-            if (endDate > startDate) { 
-                throw new functions.https.HttpsError('invalid-argument','Provided endDate must be after startDate.');
+                return officeUIDs;
+            } else {
+                throw new functions.https.HttpsError('not-found', 'No event with selectedEventUID found.');
             }
-            dict['startDate'] = startDate;
-            dict['endDate'] = endDate;
-        } else if ((startDate) || (endDate)) { 
-            throw new functions.https.HttpsError('invalid-argument','Must provide both a new startDate and new endDate.');
-        } 
+        })
+        .then(officeUIDs => {
+            return db.collection('users').doc(userUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data();
+                        const adminOfficeUIDs = data.officeAdmin || null;
+                        if (adminOfficeUIDs === null) {
+                            throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                        }
+                        let found = false;
+                        officeUIDs.forEach(x => {
+                            if (adminOfficeUIDs.includes(x) === true) {
+                                found = true;
+                            }
+                        })
 
-        if (description) { 
-            dict['description'] = description;
-        }
+                        if (found === false) {
+                            throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                        }
 
-        return db.collection('events').doc(selectedEventUID).update(dict);
-    })
+                        return
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'This user was not found in the database.');
+                    }
+                })
+        })
+        .then(() => {
 
+            let dict = {};
+            if (title) {
+                dict['title'] = title;
+            }
+
+            if ((startDate) && (endDate)) {
+                if (endDate > startDate) {
+                    throw new functions.https.HttpsError('invalid-argument', 'Provided endDate must be after startDate.');
+                }
+                dict['startDate'] = startDate;
+                dict['endDate'] = endDate;
+            } else if ((startDate) || (endDate)) {
+                throw new functions.https.HttpsError('invalid-argument', 'Must provide both a new startDate and new endDate.');
+            }
+
+            if (description) {
+                dict['description'] = description;
+            }
+
+            return db.collection('events').doc(selectedEventUID).update(dict);
+        })
+}
+
+exports.getSpaceInfoForOfficeAdmin = function (data, context, db, admin) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
+    }
+
+    let dict = {};
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return storageFunctions.getOnboardingURL(selectedOfficeUID, admin)
+                .then(url => {
+                    dict["onboardingURL"] = url
+                    return
+                })
+                .catch(error => {
+                    console.error(error);
+                    return
+                })
+        })
+        .then(() => {
+            return storageFunctions.getFloorplanURL(selectedOfficeUID, admin)
+                .then(url => {
+                    dict["floorplanURL"] = url
+                    return
+                })
+                .catch(error => {
+                    console.error(error);
+                    return
+                })
+        })
+        .then(() => {
+            return storageFunctions.getBuildingDetailsURL(selectedOfficeUID, admin)
+                .then(url => {
+                    dict["buildingDetailsURL"] = url
+                    return
+                })
+                .catch(error => {
+                    console.error(error);
+                    return
+                })
+        })
+        .then(() => {
+            return dict;
+        })
+        .catch(error => {
+            console.error(error);
+            throw error;
+        })
 }

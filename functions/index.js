@@ -193,6 +193,14 @@ exports.editEventsForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.editEventsForOfficeAdmin(data, context, db);
 });
 
+exports.createEventForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.createEventForOfficeAdmin(data, context, db);
+});
+
+exports.getSpaceInfoForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.getSpaceInfoForOfficeAdmin(data, context, db, admin);
+});
+
 // *--- ADMIN FUNCTIONS ----*
 
 exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
