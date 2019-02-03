@@ -180,9 +180,18 @@ exports.editConferenceRoomForOfficeAdmin = functions.https.onCall((data, context
 exports.editHotDeskForOfficeAdmin = functions.https.onCall((data, context) => { 
 	return officeAdminFunctions.editHotDeskForOfficeAdmin(data, context, db);
 })
+
 exports.getAllRegisteredGuestsForOfficeAdmin = functions.https.onCall((data, context) => { 
 	return officeAdminFunctions.getAllRegisteredGuestsForOfficeAdmin(data, context, db);
 })
+
+exports.getEventsForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getEventsForOfficeAdmin(data, context, db, admin);
+})
+
+exports.editEventsForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.editEventsForOfficeAdmin(data, context, db);
+});
 
 // *--- ADMIN FUNCTIONS ----*
 

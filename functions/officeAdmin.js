@@ -169,7 +169,7 @@ exports.editUserForOffice = function (data, context, db, admin) {
     const firstName = data.firstName || null;
     const lastName = data.lastName || null;
     const emailAddress = data.emailAddress || null;
-    const makeUserOfficeAdmin = data.makeUserOfficeAdmin || null;
+    const makeUserOfficeAdmin = (data.makeUserOfficeAdmin !== null) ? data.makeUserOfficeAdmin : null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('permission-denied', 'User must be signed in.');
@@ -184,10 +184,12 @@ exports.editUserForOffice = function (data, context, db, admin) {
                 const data = docRef.data();
                 const employees = data.employees;
                 const officeAdmin = data.officeAdmin;
+                if (officeAdmin === null) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not a office admin for this office.');
+                }
                 if (officeAdmin.includes(userUID) === false) {
                     throw new functions.https.HttpsError('permission-denied', 'User is not a office admin for this office.');
                 }
-                console.log(selectedUserUID);
                 if (employees.includes(selectedUserUID) === false) {
                     throw new functions.https.HttpsError('permission-denied', 'Cannot edit info for a user not a part of the selected office.');
                 }
@@ -231,7 +233,7 @@ exports.editUserForOffice = function (data, context, db, admin) {
                 const secOp = db.collection('offices').doc(selectedOfficeUID).update(secOpDict);
 
                 return Promise.all([firstOp, secOp]);
-            } else if (makeUserOfficeAdmin === true) {
+            } else if (makeUserOfficeAdmin === false) {
                 const firstOpDict = { 'offices': admin.firestore.FieldValue.arrayUnion(selectedOfficeUID), 'officeAdmin': admin.firestore.FieldValue.arrayRemove(selectedOfficeUID) };
                 const firstOp = db.collection('users').doc(selectedUserUID).update(firstOpDict);
                 const secOpDict = { 'employees': admin.firestore.FieldValue.arrayUnion(selectedUserUID), 'officeAdmin': admin.firestore.FieldValue.arrayRemove(selectedUserUID) };
@@ -243,7 +245,7 @@ exports.editUserForOffice = function (data, context, db, admin) {
             }
         })
         .catch(error => {
-            console.log(error);
+            console.error(error);
             throw error;
         })
 }
@@ -799,4 +801,146 @@ exports.getAllRegisteredGuestsForOfficeAdmin = function(data, context, db) {
             return docsData;
         })
     })
+}
+
+exports.getEventsForOfficeAdmin = function(data, context, db, admin) { 
+    const userUID = context.auth.uid || null; 
+    const selectedOfficeUID = data.selectedOfficeUID || null; 
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
+    }
+
+    return db.collection('users').doc(userUID).get()
+    .then( docRef => {
+        if (docRef.exists) {
+            const data = docRef.data();
+            const officeAdmin = data.officeAdmin;
+            if (officeAdmin.includes(selectedOfficeUID) === false) {
+                throw new functions.https.HttpsError('permission-denied', 'User is not a admin for this office.');
+            }
+            return
+        } else {
+            throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+        }
+    })
+    .then( () => { 
+        return db.collection('events').where('officeUIDs','array-contains',selectedOfficeUID).get()
+        .then( docSnapshots => { 
+            const docsData = docSnapshots.docs.map(x => x.data());
+
+            const promises = docsData.map( x => {
+                return storageFunctions.getEventImageURL(x.uid, admin)
+                .then( url => {
+                    x.imageURL = url;
+                    return x;
+                })
+                .catch(error => {
+                    return x;
+                })
+            });
+
+            return Promise.all(promises)
+            .then( eventData => {
+                return eventData;
+            })
+        })
+    })
+    .then( events => { 
+        let upcoming = []; 
+        let past = []; 
+        events.forEach( x => { 
+            const endDate = x.endDate.toDate(); 
+            const now = new Date(); 
+            if (endDate < now) { 
+                past.push(x);
+            } else { 
+                upcoming.push(x);
+            }
+        })
+        return { upcoming: upcoming, past: past }
+    })
+}
+
+exports.editEventsForOfficeAdmin = function(data, context, db) { 
+    const userUID = context.auth.uid || null; 
+    const selectedEventUID = data.selectedEventUID || null; 
+    const title = data.title || null; 
+    const startDate = new Date(data.startDate) || null; 
+    const endDate = new Date(data.endDate) || null; 
+    const description = data.description || null; 
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedEventUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedEventUID.');
+    }
+
+    return db.collection('events').doc(selectedEventUID).get()
+    .then(docRef => {
+        if (docRef.exists) {
+            const data = docRef.data();
+            const officeUIDs = data.officeUID || null;
+            if (officeUIDs === null) {
+                throw new functions.https.HttpsError('not-found', 'No office associated with event of selectedEventUID.');
+            }
+            return officeUIDs;
+        } else {
+            throw new functions.https.HttpsError('not-found', 'No event with selectedEventUID found.');
+        }
+    })
+    .then(officeUIDs => {
+        return db.collection('users').doc(userUID).get()
+            .then(docRef => {
+                if (docRef.exists) {
+                    const data = docRef.data();
+                    const adminOfficeUIDs = data.officeAdmin || null;
+                    if (adminOfficeUIDs === null) {
+                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                    }
+                    let found = false;
+                    officeUIDs.forEach(x => {
+                        if (adminOfficeUIDs.includes(x) === true) {
+                            found = true;
+                        }
+                    })
+
+                    if (found === false) {
+                        throw new functions.https.HttpsError('permission-denied', 'This user does not have permission to modify this office.');
+                    }
+
+                    return
+                } else {
+                    throw new functions.https.HttpsError('not-found', 'This user was not found in the database.');
+                }
+            })
+    })
+    .then( () => { 
+
+        let dict = {};
+        if (title) { 
+            dict['title'] = title;
+        }
+
+        if ((startDate) && (endDate)) { 
+            if (endDate > startDate) { 
+                throw new functions.https.HttpsError('invalid-argument','Provided endDate must be after startDate.');
+            }
+            dict['startDate'] = startDate;
+            dict['endDate'] = endDate;
+        } else if ((startDate) || (endDate)) { 
+            throw new functions.https.HttpsError('invalid-argument','Must provide both a new startDate and new endDate.');
+        } 
+
+        if (description) { 
+            dict['description'] = description;
+        }
+
+        return db.collection('events').doc(selectedEventUID).update(dict);
+    })
+
 }
