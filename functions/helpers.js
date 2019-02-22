@@ -9,6 +9,15 @@ function validateUserType(type) {
 	return types.includes(type);
 }
 
+exports.validateServiceRequestType = function(type) { 
+	return validateServiceRequestType(type);
+}
+
+function validateServiceRequestType(type) { 
+	const allTypes = ['infoTech','plumbing','lighting','generalMaintenance','furniture','door','heatingCooling','cleaning','supplies','other'];
+	return allTypes.includes(type); 
+}
+
 exports.getExpandedOfficeData = function(officeUIDs, db) {
 	return getExpandedOfficeData(officeUIDs, db);
 }

@@ -803,7 +803,7 @@ exports.getAllRegisteredGuestsForOfficeAdmin = function (data, context, db) {
         })
 }
 
-exports.createEventForOfficeAdmin = function (data, context, db) {
+exports.createEventForOfficeAdmin = function (data, context, db, admin) {
     const userUID = context.auth.uid;
     const selectedOfficeUID = data.selectedOfficeUID || null;
     const title = data.title || null;
@@ -864,7 +864,7 @@ exports.createEventForOfficeAdmin = function (data, context, db) {
         })
         .then(() => {
 
-            let dict = { title: title, startDate: startDate, endDate: endDate, description: description, canceled: false, address: address };
+            let dict = { title: title, startDate: startDate, endDate: endDate, description: description, canceled: false, address: address, officeUIDs: admin.firestore.FieldValue.arrayUnion(selectedOfficeUID) };
             return db.collection('events').add(dict)
                 .then(docRef => {
                     return docRef.id;
@@ -874,7 +874,10 @@ exports.createEventForOfficeAdmin = function (data, context, db) {
             if (uid === null) {
                 throw new functions.https.HttpsError('not-found', 'Unable to add new event to database.');
             }
-            return db.collection('events').doc(uid).update({ uid: uid });
+            return db.collection('events').doc(uid).update({ uid: uid })
+                .then(() => {
+                    return uid;
+                })
         })
 }
 
@@ -903,7 +906,7 @@ exports.getEventsForOfficeAdmin = function (data, context, db, admin) {
             }
         })
         .then(() => {
-            return db.collection('events').where('officeUIDs', 'array-contains', selectedOfficeUID).get()
+            return db.collection('events').where('canceled', '==', false).where('officeUIDs', 'array-contains', selectedOfficeUID).get()
                 .then(docSnapshots => {
                     const docsData = docSnapshots.docs.map(x => x.data());
 
@@ -947,6 +950,7 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
     const startDate = new Date(data.startDate) || null;
     const endDate = new Date(data.endDate) || null;
     const description = data.description || null;
+    const canceled = data.canceled || null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -959,7 +963,7 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
         .then(docRef => {
             if (docRef.exists) {
                 const data = docRef.data();
-                const officeUIDs = data.officeUID || null;
+                const officeUIDs = data.officeUIDs || null;
                 if (officeUIDs === null) {
                     throw new functions.https.HttpsError('not-found', 'No office associated with event of selectedEventUID.');
                 }
@@ -1002,7 +1006,7 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
             }
 
             if ((startDate) && (endDate)) {
-                if (endDate > startDate) {
+                if (endDate < startDate) {
                     throw new functions.https.HttpsError('invalid-argument', 'Provided endDate must be after startDate.');
                 }
                 dict['startDate'] = startDate;
@@ -1013,6 +1017,10 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
 
             if (description) {
                 dict['description'] = description;
+            }
+
+            if (canceled) {
+                dict['canceled'] = canceled;
             }
 
             return db.collection('events').doc(selectedEventUID).update(dict);
@@ -1083,5 +1091,171 @@ exports.getSpaceInfoForOfficeAdmin = function (data, context, db, admin) {
         .catch(error => {
             console.error(error);
             throw error;
+        })
+}
+
+exports.getAllServiceRequestsForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID.');
+    }
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return db.collection('serviceRequests').where('officeUID', '==', selectedOfficeUID).where('canceled', '==', false).get()
+                .then((docSnapshots) => {
+                    const docsData = docSnapshots.docs.map(x => x.data());
+                    return docsData;
+                })
+        })
+}
+
+exports.updateServiceRequestStatusForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedServiceRequestUID = data.selectedServiceRequestUID || null;
+    const newStatus = data.newStatus || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if ((selectedServiceRequestUID === null) || (newStatus === null)) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedServiceRequestUID & newStatus.');
+    }
+
+    const allStatusOptions = ['open', 'pending', 'closed'];
+    if (allStatusOptions.includes(newStatus) === false) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide a valid newStatus.');
+    }
+
+    let userOfficeAdmin = null;
+    return db.collection('users').doc(userUID).get()
+        .then((docRef) => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin || null;
+                if (officeAdmin === null) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an office admin.');
+                }
+                userOfficeAdmin = officeAdmin;
+                return
+            } else {
+                throw new functions.https.HttpsError('not-found', 'User not found in database');
+            }
+        })
+        .then(() => {
+            return db.collection('serviceRequests').doc(selectedServiceRequestUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data();
+                        const officeUID = data.officeUID || null;
+                        if (officeUID === null) {
+                            throw new functions.https.HttpsError('permission-denied', 'This service request does not belong to an office.');
+                        }
+                        if (userOfficeAdmin.includes(officeUID) === false) {
+                            throw new functions.https.HttpsError('permission-denied', 'User is not an office admin for this office.');
+                        }
+                        return
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'Service request not found.')
+                    }
+                })
+        })
+        .then(() => {
+            return db.collection('serviceRequests').doc(selectedServiceRequestUID).update({ status: newStatus });
+        })
+}
+
+exports.getServiceRequestAutoRoutingForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID & updatedEmails.');
+    }
+
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then( () => { 
+            return db.collection('serviceRequestsAutoRouting').doc(selectedOfficeUID).get()
+            .then( docRef => { 
+                if (docRef.exists) { 
+                    const data = docRef.data(); 
+                    return data; 
+                } else { 
+                    return {};
+                }
+            })
+        })
+}
+
+
+exports.updateServiceRequestAutoRoutingForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const updatedEmails = data.updatedEmails || null;
+
+    if (userUID === null) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
+    }
+    if ((selectedOfficeUID === null) || (updatedEmails === null)) {
+        throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedOfficeUID & updatedEmails.');
+    }
+
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            let validatedEmails = {};
+            for (let key in updatedEmails) {
+                const value = updatedEmails[key];
+                if (helperFunctions.validateServiceRequestType(key) === true) {
+                    validatedEmails[key] = value;
+                }
+            }
+
+            return db.collection('serviceRequestsAutoRouting').doc(selectedOfficeUID).update(validatedEmails);
         })
 }

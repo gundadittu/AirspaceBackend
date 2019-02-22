@@ -3,8 +3,8 @@
 var admin = require("firebase-admin");
 var serviceAccount = require("./serviceAccountKey.json");
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: "airspace-management-app.appspot.com"
+	credential: admin.credential.cert(serviceAccount),
+	storageBucket: "airspace-management-app.appspot.com"
 });
 
 const functions = require('firebase-functions');
@@ -21,7 +21,7 @@ const helperFunctions = require('./helpers');
 const emailHelperFunctions = require('./emailHelper');
 const storageFunctions = require('./storage');
 var db = admin.firestore();
-const settings = {timestampsInSnapshots: true};
+const settings = { timestampsInSnapshots: true };
 db.settings(settings);
 
 exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
@@ -121,7 +121,7 @@ exports.cancelServiceRequest = functions.https.onCall((data, context) => {
 });
 
 exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
-		return notificationFunctions.notifyUserOfArrivedGuest(change, context, db, admin);
+	return notificationFunctions.notifyUserOfArrivedGuest(change, context, db, admin);
 });
 
 exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
@@ -136,56 +136,56 @@ exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	return officeFunctions.getEmployeesForOffice(data, context, db);
 });
 
-exports.getSpaceInfoForUser = functions.https.onCall((data, context) => { 
+exports.getSpaceInfoForUser = functions.https.onCall((data, context) => {
 	return officeFunctions.getSpaceInfoForUser(data, context, db, admin);
 });
 
 // *---- OFFICE ADMIN FUNCTIONS ---* 
 
-exports.getAllUsersForOffice = functions.https.onCall((data, context) => { 
+exports.getAllUsersForOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getAllUsersForOffice(data, context, db);
 });
 
-exports.addUserToOffice = functions.https.onCall((data, context) => { 
+exports.addUserToOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.addUserToOffice(data, context, db, admin);
 });
 
-exports.removeUserFromOffice = functions.https.onCall((data, context) => { 
+exports.removeUserFromOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.removeUserFromOffice(data, context, db, admin);
 });
 
-exports.editUserForOffice = functions.https.onCall((data, context) => { 
+exports.editUserForOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.editUserForOffice(data, context, db, admin);
 })
 
-exports.getAllConferenceRoomsForOffice = functions.https.onCall((data, context) => { 
+exports.getAllConferenceRoomsForOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getAllConferenceRoomsForOffice(data, context, db, admin);
 });
 
-exports.getAllHotDesksForOffice = functions.https.onCall((data, context) => { 
+exports.getAllHotDesksForOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getAllHotDesksForOffice(data, context, db);
 });
 
-exports.addConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.addConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.addConferenceRoomForOfficeAdmin(data, context, db);
 });
-exports.addHotDeskForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.addHotDeskForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.addHotDeskForOfficeAdmin(data, context, db);
 });
 
-exports.editConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.editConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.editConferenceRoomForOfficeAdmin(data, context, db);
 })
 
-exports.editHotDeskForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.editHotDeskForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.editHotDeskForOfficeAdmin(data, context, db);
 })
 
-exports.getAllRegisteredGuestsForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.getAllRegisteredGuestsForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getAllRegisteredGuestsForOfficeAdmin(data, context, db);
 })
 
-exports.getEventsForOfficeAdmin = functions.https.onCall((data, context) => { 
+exports.getEventsForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getEventsForOfficeAdmin(data, context, db, admin);
 })
 
@@ -194,102 +194,257 @@ exports.editEventsForOfficeAdmin = functions.https.onCall((data, context) => {
 });
 
 exports.createEventForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.createEventForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.createEventForOfficeAdmin(data, context, db, admin);
 });
 
 exports.getSpaceInfoForOfficeAdmin = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getSpaceInfoForOfficeAdmin(data, context, db, admin);
 });
 
-// *--- ADMIN FUNCTIONS ----*
+exports.getAllServiceRequestsForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.getAllServiceRequestsForOfficeAdmin(data, context, db);
+})
 
-exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
-	const userEmail = data.email || null; 
-	if (userEmail === null) { 
-		throw new functions.https.HttpsError('invalid-argument','Must provide email.');
+exports.updateServiceRequestStatusForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.updateServiceRequestStatusForOfficeAdmin(data, context, db);
+})
+
+exports.getServiceRequestAutoRoutingForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.getServiceRequestAutoRoutingForOfficeAdmin(data, context, db);
+})
+
+exports.updateServiceRequestAutoRoutingForOfficeAdmin = functions.https.onCall((data, context) => {
+	return officeAdminFunctions.updateServiceRequestAutoRoutingForOfficeAdmin(data, context, db);
+})
+
+
+// *----- ----*
+
+exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('serviceRequests/{uid}').onCreate((snap, context) => {
+	const newValue = snap.data();
+	const issueType = newValue.issueType || null;
+	const officeUID = newValue.officeUID || null; 
+	const hostUID = newValue.userUID || null;
+
+	if ((officeUID === null) || (issueType === null) || (hostUID === null)) { 
+		console.log(1);
+		throw new functions.https.HttpsError('invalid-arguments','Missing required arguments'); 
 	}
 
-	return admin.auth().getUserByEmail(userEmail)
-	.then( userRecord => { 
-		const userUID = userRecord.uid || null;
-		if (userUID === null) {
-			throw new functions.https.HttpsError('not-found', 'User not found.');
-		}
+	if (helperFunctions.validateServiceRequestType(issueType) === false) { 
+		console.log(2);
+		throw new functions.https.HttpsError('not-found','Not a valid service issue type'); 
+	}
 
-		return db.collection('users').doc(userUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data();
-				const type = data.type || null;
-				return {"type": type};
-			} else {
-				throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+	let allEmails = [];
+
+	let requestType = issueType; 
+	let requestStatus = newValue.status || null;
+	let requestTimestamp = newValue.timestamp || null;
+	let requestDetails = newValue.note || null;
+	let requestOfficeName = null;
+	let requestAddress = null;
+	let requestHostName = null; 
+	let requestHostEmail = null; 
+	let requestImageURL = null;
+	let finishedURL = null; 
+	let inProgressURL = null;
+
+	return db.collection('serviceRequestsAutoRouting').doc(officeUID).get()
+	.then( docRef => { 
+		if (docRef.exists) { 
+			const data = docRef.data();
+			console.log(data);
+			const emails = data[issueType] || null;
+			// let emails = null; 
+			// for (let key in data) { 
+			// 	console.log(2.5);
+			// 	const value = data[key];
+			// 	console.log(key);
+			// 	console.log(value);
+			// 	if (key === issueType) { 
+			// 		emails = value; 
+			// 		break;
+			// 	}
+			// }
+			
+			if (emails === null) {
+				console.log(3);
+				console.log(issueType);
+				throw new functions.https.HttpsError('not-found','No emails provided for this service request.'); 
 			}
-		})
-		.catch( error => {
-			console.error(error);
-			throw error;
-		})
+			allEmails = emails;
+			console.log(4);
+			return 
+		} else { 
+			console.log(5);
+			throw new functions.https.HttpsError('not-found','No emails provided for this service request.'); 
+		}
 	})
-	.catch(error => { 
-		console.error(error); 
-		throw error;
+	.then(() => { 
+		const firstPromise = db.collection('users').doc(hostUID).get()
+		.then( docRef => { 
+			const data = docRef.data || null; 
+			if (data === null) { 
+				console.log(6);
+				throw new functions.https.HttpsError('not-found','No user info found for this service request.');  
+			}
+			requestHostName = data.firstName+" "+data.lastName; 
+			requestHostEmail = data.email;
+			console.log(7); 
+			return 
+		})
+
+		const secondPromise = db.collection('offices').doc(officeUID).get()
+		.then( docRef => { 
+			const data = docRef.data || null; 
+			if (data === null) { 
+				console.log(8); 
+				return 
+			}
+			requestOfficeName = data.name; 
+			const buildingUID = data.buildingUID || null; 
+			if (buildingUID === null) { 
+				console.log(9); 
+				return 
+			}
+			return db.collection('buildings').doc(buildingUID).get()
+			.then( docRef => { 
+				const data = docRef.data() || null; 
+				if (data === null) { 
+					console.log(10); 
+					return 
+				}
+				requestAddress = data.address; 
+				console.log(11); 
+				return 
+			})
+		})
+		console.log(12); 
+		return Promise.all[firstPromise, secondPromise]; 
+	})
+	.then(() => { 
+		// let requestType = issueType; 
+		// let requestStatus = newValue.status || null;
+		// let requestTimestamp = newValue.timestamp || null;
+		// let requestDetails = newValue.note || null;
+		// let requestOfficeName = null;
+		// let requestAddress = null;
+		// let requestHostName = null; 
+		// let requestHostEmail = null; 
+		// let requestImageURL = null;
+		// let finishedURL = null; 
+		// let inProgressURL = null;
+
+		let dict = {
+			recipientEmails: allEmails, 
+			request: newValue, 
+			requestType: requestType, 
+			requestStatus: requestStatus, 
+			requestTimestamp: requestTimestamp, 
+			requestDetails: requestDetails, 
+			requestOfficeName: requestOfficeName, 
+			requestAddress: requestAddress, 
+			requestHostName: requestHostName, 
+			requestImageURL: requestImageURL, 
+			finishedURL: finishedURL, 
+			inProgressURL: inProgressURL
+		};
+		console.log(13); 
+		console.log(dict);
+		return emailHelperFunctions.sendServiceRequestAutoRoutingEmail(dict);
 	})
 });
 
-exports.getUserInfo = functions.https.onCall((data, context) => { 
+// *--- ADMIN FUNCTIONS ----*
+
+exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
+	const userEmail = data.email || null;
+	if (userEmail === null) {
+		throw new functions.https.HttpsError('invalid-argument', 'Must provide email.');
+	}
+
+	return admin.auth().getUserByEmail(userEmail)
+		.then(userRecord => {
+			const userUID = userRecord.uid || null;
+			if (userUID === null) {
+				throw new functions.https.HttpsError('not-found', 'User not found.');
+			}
+
+			return db.collection('users').doc(userUID).get()
+				.then(docRef => {
+					if (docRef.exists) {
+						const data = docRef.data();
+						const type = data.type || null;
+						return { "type": type };
+					} else {
+						throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+					}
+				})
+				.catch(error => {
+					console.error(error);
+					throw error;
+				})
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
+});
+
+exports.getUserInfo = functions.https.onCall((data, context) => {
 	const userUID = context.auth.uid;
 	if (userUID === null) {
 		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
 	}
 
 	return db.collection('users').doc(userUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			return data;
-		} else {
-			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
-		}
-	})
-	.then( data => { 
-		const officeAdmin = data.officeAdmin || null;
-		if ((officeAdmin === null) || (officeAdmin.length === 0)) { 
-			return data 
-		}
-		return helperFunctions.getExpandedOfficeData(officeAdmin, db)
-		.then( officeData => { 
-			data.officeAdmin = officeData;
-			return data; 
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				return data;
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+			}
 		})
-	})
-	.then( data => { 
-		const userOffices = data.offices || null;
-		if ((userOffices === null) || (userOffices.length === 0)) { 
-			return data 
-		}
-		return helperFunctions.getExpandedOfficeData(userOffices, db)
-		.then( officeData => { 
-			data.offices = officeData;
-			return data; 
+		.then(data => {
+			const officeAdmin = data.officeAdmin || null;
+			if ((officeAdmin === null) || (officeAdmin.length === 0)) {
+				return data
+			}
+			return helperFunctions.getExpandedOfficeData(officeAdmin, db)
+				.then(officeData => {
+					data.officeAdmin = officeData;
+					return data;
+				})
 		})
-	})
-	.then( data => { 
-		const currUserUID = data.uid || null;
-		if (currUserUID === null) { 
-			return data; 
-		}
-		
-		return storageFunctions.getProfileImageURL(currUserUID, admin)
-		.then( url => { 
-			data.profileImageURL = url;
-			return data; 
+		.then(data => {
+			const userOffices = data.offices || null;
+			if ((userOffices === null) || (userOffices.length === 0)) {
+				return data
+			}
+			return helperFunctions.getExpandedOfficeData(userOffices, db)
+				.then(officeData => {
+					data.offices = officeData;
+					return data;
+				})
 		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		.then(data => {
+			const currUserUID = data.uid || null;
+			if (currUserUID === null) {
+				return data;
+			}
+
+			return storageFunctions.getProfileImageURL(currUserUID, admin)
+				.then(url => {
+					data.profileImageURL = url;
+					return data;
+				})
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 });
 
 exports.getUserType = functions.https.onCall((data, context) => {
@@ -299,18 +454,18 @@ exports.getUserType = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('users').doc(userUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			return data;
-		} else {
-			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
-		}
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				return data;
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+			}
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 });
 
 
@@ -321,62 +476,62 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('users').doc(userUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			return data;
-		} else {
-			throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
-		}
-	})
-	.then( data => {
-		const companies = data.companies || null;
-		if (companies === null) {
-			return data
-		}
-		const promises = Promise.all(companies.map( x => {
-			return db.collection('companies').doc(x).get()
-			.then( docRef => {
-				return docRef.data();
-			} )
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		}
-		));
-		return promises
-		.then( companyProfiles => {
-			data.companies = companyProfiles;
-			return data;
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				return data;
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find user with uid: ', userUID);
+			}
 		})
-	})
-	.then( data => {
-		const offices = data.offices || null;
-		if (offices === null) {
-			return data
-		}
-		const promises = Promise.all(offices.map( x => {
-			return db.collection('offices').doc(x).get()
-			.then( docRef => {
-				return docRef.data();
-			} )
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		}
-		));
-		return promises
-		.then( officeProfiles => {
-			data.offices = officeProfiles;
-			return data;
+		.then(data => {
+			const companies = data.companies || null;
+			if (companies === null) {
+				return data
+			}
+			const promises = Promise.all(companies.map(x => {
+				return db.collection('companies').doc(x).get()
+					.then(docRef => {
+						return docRef.data();
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			}
+			));
+			return promises
+				.then(companyProfiles => {
+					data.companies = companyProfiles;
+					return data;
+				})
 		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		.then(data => {
+			const offices = data.offices || null;
+			if (offices === null) {
+				return data
+			}
+			const promises = Promise.all(offices.map(x => {
+				return db.collection('offices').doc(x).get()
+					.then(docRef => {
+						return docRef.data();
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			}
+			));
+			return promises
+				.then(officeProfiles => {
+					data.offices = officeProfiles;
+					return data;
+				})
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 });
 
 exports.createUser = functions.https.onCall((data, context) => {
@@ -387,13 +542,15 @@ exports.getAllUsers = functions.https.onCall((data, context) => {
 	// confirm user is admin !!!!
 	const uid = context.auth.uid;
 	const page = data.page || "0";
-	return admin.auth().listUsers(1000, page).then( listUserResults => {
+	return admin.auth().listUsers(1000, page).then(listUserResults => {
 		console.log("Successfully retrieved list of users: ", listUserResults);
 		const users = listUserResults.users;
 		const nextPageToken = listUserResults.pageToke || null;
-		return { "users" : users,
-				 "nextPageToken": nextPageToken };
-	}).catch( error => {
+		return {
+			"users": users,
+			"nextPageToken": nextPageToken
+		};
+	}).catch(error => {
 		console.log("Error getting all users: ", error);
 		throw new functions.https.HttpsError('internal', 'Error fetching list of users.')
 	})
@@ -417,58 +574,58 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('users').doc(uid).get()
-	.then( docRef => {
-		if (doc.exists) {
-       		const data = doc.data();
-       		const userType = data.type;
+		.then(docRef => {
+			if (doc.exists) {
+				const data = doc.data();
+				const userType = data.type;
 
-       		// need to add check to see if tenantAdmin in order to change email address
-       		if (userType === 'admin') {
-       			adminStatus = true;
-       			return
-       		} else if (uid !== authUserUID)  { // check if an user is attempting to change another users info
-       			throw new functions.https.HttpsError('permission-denied','User can not only change their own bio info.');
-       		} else {
-       			// this case means uid === authUserUID
-       			return
-       		}
+				// need to add check to see if tenantAdmin in order to change email address
+				if (userType === 'admin') {
+					adminStatus = true;
+					return
+				} else if (uid !== authUserUID) { // check if an user is attempting to change another users info
+					throw new functions.https.HttpsError('permission-denied', 'User can not only change their own bio info.');
+				} else {
+					// this case means uid === authUserUID
+					return
+				}
 
-    	} else {
-       		// doc.data() will be undefined in this case
-       	 	throw new functions.https.HttpsError('invalid-arguments','User uid is not valid.');
-    	}
-	})
-	.then( x => {
-		if (firstName !== null) {
-		  dict["firstName"] = firstName
-		}
-
-		if (lastName !== null) {
-		  dict["lastName"] = lastName
-		}
-
-		if ((type !== null) && (adminStatus === true)) {
-			dict["type"] = type;
-		}
-
-		if ((email !== null) && (adminStatus === true)) {
-			dict["email"] = email;
-		}
-
-		const firestoreUpdate =  db.collection("users").doc(uid).update(dict);
-		return Promise.all([firestoreUpdate])
-		.then(res => {
-			console.log("Successfully update bio info for user profile: ", uid);
-			return
+			} else {
+				// doc.data() will be undefined in this case
+				throw new functions.https.HttpsError('invalid-arguments', 'User uid is not valid.');
+			}
 		})
-		.catch( error => {
-			throw new functions.https.HttpsError('internal', "There was an issue updating user profile bio info: ", uid);
+		.then(x => {
+			if (firstName !== null) {
+				dict["firstName"] = firstName
+			}
+
+			if (lastName !== null) {
+				dict["lastName"] = lastName
+			}
+
+			if ((type !== null) && (adminStatus === true)) {
+				dict["type"] = type;
+			}
+
+			if ((email !== null) && (adminStatus === true)) {
+				dict["email"] = email;
+			}
+
+			const firestoreUpdate = db.collection("users").doc(uid).update(dict);
+			return Promise.all([firestoreUpdate])
+				.then(res => {
+					console.log("Successfully update bio info for user profile: ", uid);
+					return
+				})
+				.catch(error => {
+					throw new functions.https.HttpsError('internal', "There was an issue updating user profile bio info: ", uid);
+				})
 		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 
 });
 
@@ -479,13 +636,13 @@ exports.triggerUserBioInfoUpdate = functions.firestore.document('users/{uid}').o
 
 	var dict = {};
 	if ((data.firstName !== prev.firstName) && (data.lastName !== prev.lastName)) {
-		 dict["displayName"] = data.firstName + " " + data.lastName;
+		dict["displayName"] = data.firstName + " " + data.lastName;
 
 	} else if (data.firstName !== prev.firstName) {
-		  dict["displayName"] = data.firstName + " " + prev.lastName;
+		dict["displayName"] = data.firstName + " " + prev.lastName;
 
 	} if (data.lastName !== prev.lastName) {
-		  dict["displayName"] = prev.firstName + " " + data.lastName;
+		dict["displayName"] = prev.firstName + " " + data.lastName;
 	}
 
 	if (data.email !== prev.email) {
@@ -494,14 +651,14 @@ exports.triggerUserBioInfoUpdate = functions.firestore.document('users/{uid}').o
 
 	console.log(dict);
 	return admin.auth().updateUser(uid, dict)
-	.then( (userRecord) => {
-		console.log("Successfully updated user info for: ", uid);
-		return
-	})
-	.catch( (error) => {
-		console.error(error);
-		throw error;
-	})
+		.then((userRecord) => {
+			console.log("Successfully updated user info for: ", uid);
+			return
+		})
+		.catch((error) => {
+			console.error(error);
+			throw error;
+		})
 });
 
 exports.deleteUser = functions.https.onCall((data, context) => {
@@ -511,14 +668,14 @@ exports.deleteUser = functions.https.onCall((data, context) => {
 	}
 
 	admin.auth().deleteUser(uid)
-	.then(() => {
-	    console.log("Successfully deleted user");
+		.then(() => {
+			console.log("Successfully deleted user");
 			return
-	})
-	.catch((error) => {
-	    console.log("Error deleting user:", error);
+		})
+		.catch((error) => {
+			console.log("Error deleting user:", error);
 			throw new functions.https.HttpsError("internal", "Error deleting user.")
-	});
+		});
 });
 
 exports.createBuilding = functions.https.onCall((data, context) => {
@@ -532,36 +689,36 @@ exports.createBuilding = functions.https.onCall((data, context) => {
 	return db.collection('buildings').add({
 		name: bName,
 		address: bAddress,
-	}).then( (docRef) => {
+	}).then((docRef) => {
 		const id = docRef.id
 		return db.collection('buildings').doc(id).update({
 			uid: id
 		})
-		.then( (docRef) => {
-			console.log("Successfully added building.");
-			return
-		})
-		.catch( (error) => {
-			console.log("Error adding building id to database: ", error);
-			throw new functions.https.HttpsError("internal", "Error adding new building ID into database.")
-		})
+			.then((docRef) => {
+				console.log("Successfully added building.");
+				return
+			})
+			.catch((error) => {
+				console.log("Error adding building id to database: ", error);
+				throw new functions.https.HttpsError("internal", "Error adding new building ID into database.")
+			})
 	})
-	.catch( (error) => {
-		console.log("Error adding building: ", error);
-		throw new functions.https.HttpsError("internal", "Error adding new building data into database.")
-	})
+		.catch((error) => {
+			console.log("Error adding building: ", error);
+			throw new functions.https.HttpsError("internal", "Error adding new building data into database.")
+		})
 });
 
 exports.getAllBuildings = functions.https.onCall((data, context) => {
 	return db.collection('buildings').get()
-	.then((snapshot) => {
-		const docs = snapshot.docs.map( x => x.data());
-		console.log("Successfully got all buildings: ", docs);
-		return {"buildings": docs}
-	})
-	.catch( (error) => {
-		throw new functions.https.HttpsError("internal", "Unable to get all buildings: ", error);
-	})
+		.then((snapshot) => {
+			const docs = snapshot.docs.map(x => x.data());
+			console.log("Successfully got all buildings: ", docs);
+			return { "buildings": docs }
+		})
+		.catch((error) => {
+			throw new functions.https.HttpsError("internal", "Unable to get all buildings: ", error);
+		})
 });
 
 exports.addLandlordToBuilding = functions.https.onCall((data, context) => {
@@ -571,25 +728,25 @@ exports.addLandlordToBuilding = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError("invalid-arguments", "Need to provide building and landlord UID.");
 	}
 
-	const dbop1 = db.collection("buildings").doc(buildingUID).update({"landlords": admin.firestore.FieldValue.arrayUnion(userUID)})
-	.then( docRef => {
-		console.log("Successfully added landlord to building.");
-		return
-	})
-	.catch( error => {
-		console.log("Error setting landlord for building.");
-		throw new functions.https.HttpsError("internal", "Unable to add landlord for building in database: ", error);
-	})
+	const dbop1 = db.collection("buildings").doc(buildingUID).update({ "landlords": admin.firestore.FieldValue.arrayUnion(userUID) })
+		.then(docRef => {
+			console.log("Successfully added landlord to building.");
+			return
+		})
+		.catch(error => {
+			console.log("Error setting landlord for building.");
+			throw new functions.https.HttpsError("internal", "Unable to add landlord for building in database: ", error);
+		})
 
-	const dbop2 = db.collection("users").doc(userUID).update({"buildings": admin.firestore.FieldValue.arrayUnion(buildingUID)})
-	.then( docRef => {
-		console.log("Successfully added building under landlord.");
-		return
-	})
-	.catch( error => {
-		console.log("Error setting building under landlord in database.");
-		throw new functions.https.HttpsError("internal", "Unable to add set building under landlord in database.")
-	})
+	const dbop2 = db.collection("users").doc(userUID).update({ "buildings": admin.firestore.FieldValue.arrayUnion(buildingUID) })
+		.then(docRef => {
+			console.log("Successfully added building under landlord.");
+			return
+		})
+		.catch(error => {
+			console.log("Error setting building under landlord in database.");
+			throw new functions.https.HttpsError("internal", "Unable to add set building under landlord in database.")
+		})
 
 	return Promise.all([dbop1, dbop2]);
 });
@@ -606,40 +763,40 @@ exports.removeLandlordFromBuilding = functions.https.onCall((data, context) => {
 	// 	throw new functions.https.HttpsError("invalid-arguments", "Need to provide user with Landlord type.");
 	// }
 
-	const dbop1 = db.collection("buildings").doc(buildingUID).update({"landlords": admin.firestore.FieldValue.arrayRemove(userUID)})
-	.then( docRef => {
-		console.log("Successfully removed landlord to building.");
-		return
-	})
-	.catch( error => {
-		console.log("Error removing landlord for building.");
-		throw new functions.https.HttpsError("internal", "Unable to remove landlord for building in database: ", error);
-	})
+	const dbop1 = db.collection("buildings").doc(buildingUID).update({ "landlords": admin.firestore.FieldValue.arrayRemove(userUID) })
+		.then(docRef => {
+			console.log("Successfully removed landlord to building.");
+			return
+		})
+		.catch(error => {
+			console.log("Error removing landlord for building.");
+			throw new functions.https.HttpsError("internal", "Unable to remove landlord for building in database: ", error);
+		})
 
-	const dbop2 = db.collection("users").doc(userUID).update({"buildings": admin.firestore.FieldValue.arrayRemove(buildingUID)})
-	.then( docRef => {
-		console.log("Successfully removed building under landlord.");
-		return
-	})
-	.catch( error => {
-		console.log("Error removing building under landlord in database.");
-		throw new functions.https.HttpsError("internal", "Unable to remove building under landlord in database.")
-	})
+	const dbop2 = db.collection("users").doc(userUID).update({ "buildings": admin.firestore.FieldValue.arrayRemove(buildingUID) })
+		.then(docRef => {
+			console.log("Successfully removed building under landlord.");
+			return
+		})
+		.catch(error => {
+			console.log("Error removing building under landlord in database.");
+			throw new functions.https.HttpsError("internal", "Unable to remove building under landlord in database.")
+		})
 
 	return Promise.all([dbop1, dbop2]);
 });
 
 exports.getAllLandlords = functions.https.onCall((data, context) => {
-	const query = db.collection("users").where('type','==','landlord');
+	const query = db.collection("users").where('type', '==', 'landlord');
 	return query.get()
-	.then( (querySnapshot) => {
-		const landlordsArray = querySnapshot.docs.map( x => x.data() );
-		console.log("Successfully got all landlords: ", landlordsArray);
-		return landlordsArray;
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', 'Unable to access database: ', error);
-	})
+		.then((querySnapshot) => {
+			const landlordsArray = querySnapshot.docs.map(x => x.data());
+			console.log("Successfully got all landlords: ", landlordsArray);
+			return landlordsArray;
+		})
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', 'Unable to access database: ', error);
+		})
 });
 
 exports.getBuildingProfile = functions.https.onCall((data, context) => {
@@ -648,7 +805,7 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide building uid.')
 	}
 	return db.collection("buildings").doc(buildingUID).get()
-		.then( doc => {
+		.then(doc => {
 			if (doc.exists) {
 				const data = doc.data();
 				return data;
@@ -656,55 +813,55 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 				throw new functions.https.HttpsError('not-found', "Unable to find building in database: ", buildingUID);
 			}
 		})
-		.then( data => {
+		.then(data => {
 			const landlords = data.landlords || null;
 			if (landlords === null) {
 				return data;
 			}
 			const promise = Promise.all(landlords.map(x => {
 				return db.collection("users").doc(x).get()
-				.then( (docRef) => {
-					if (docRef.exists) {
-						const data = docRef.data();
-						return data;
-					}
-					return {};
-				})
+					.then((docRef) => {
+						if (docRef.exists) {
+							const data = docRef.data();
+							return data;
+						}
+						return {};
+					})
 			}));
 			return promise
-			.then( (landlordProfiles) => {
-				data.landlords = landlordProfiles;
-				return data
-			})
-			.catch( error => {
-				throw new functions.https.HttpsError('internal', "Unable to extract landlords for building from database: ", buildingUID);
-			})
+				.then((landlordProfiles) => {
+					data.landlords = landlordProfiles;
+					return data
+				})
+				.catch(error => {
+					throw new functions.https.HttpsError('internal', "Unable to extract landlords for building from database: ", buildingUID);
+				})
 		})
-		.then( data => {
+		.then(data => {
 			const offices = data.offices || null;
 			if (offices === null) {
 				return data;
 			}
 			const promise = Promise.all(offices.map(x => {
 				return db.collection("offices").doc(x).get()
-				.then( (docRef) => {
-					if (docRef.exists) {
-						const data = docRef.data();
-						return data;
-					}
-					return {};
-				})
+					.then((docRef) => {
+						if (docRef.exists) {
+							const data = docRef.data();
+							return data;
+						}
+						return {};
+					})
 			}));
 			return promise
-			.then( (officeProfiles) => {
-				data.offices = officeProfiles;
-				return data;
-			})
-			.catch( error => {
-				throw new functions.https.HttpsError('internal', "Unable to extract offices for building from database: ", buildingUID);
-			})
+				.then((officeProfiles) => {
+					data.offices = officeProfiles;
+					return data;
+				})
+				.catch(error => {
+					throw new functions.https.HttpsError('internal', "Unable to extract offices for building from database: ", buildingUID);
+				})
 		})
-		.catch( error => {
+		.catch(error => {
 			throw new functions.https.HttpsError('internal', "Unable to extract building from database: ", buildingUID);
 		})
 });
@@ -723,35 +880,35 @@ exports.updateBuildingBioInfo = functions.https.onCall((data, context) => {
 	}
 
 	if (name !== null) {
-	  dict["name"] = name
+		dict["name"] = name
 	}
 
 	if (address !== null) {
-	  dict["address"] = address
+		dict["address"] = address
 	}
 
-	const firestoreUpdate =  db.collection("buildings").doc(uid).update(dict);
+	const firestoreUpdate = db.collection("buildings").doc(uid).update(dict);
 	return Promise.all([firestoreUpdate])
-	.then(res => {
-		console.log("Successfully updated bio info for building: ", uid);
-		return
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', "There was an issue updating building profile bio info: ", uid);
-	})
+		.then(res => {
+			console.log("Successfully updated bio info for building: ", uid);
+			return
+		})
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', "There was an issue updating building profile bio info: ", uid);
+		})
 
 });
 
 exports.getAllCompanies = functions.https.onCall((data, context) => {
 	return db.collection('companies').get()
-	.then((snapshot) => {
-		const docs = snapshot.docs.map( x => x.data());
-		console.log("Successfully got all companies: ", docs);
-		return {"companies": docs}
-	})
-	.catch( (error) => {
-		throw new functions.https.HttpsError("internal", "Unable to get all companies: ", error);
-	})
+		.then((snapshot) => {
+			const docs = snapshot.docs.map(x => x.data());
+			console.log("Successfully got all companies: ", docs);
+			return { "companies": docs }
+		})
+		.catch((error) => {
+			throw new functions.https.HttpsError("internal", "Unable to get all companies: ", error);
+		})
 });
 
 exports.createCompany = functions.https.onCall((data, context) => {
@@ -761,23 +918,23 @@ exports.createCompany = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('companies').add({ name: name })
-	.then( docRef => {
-		const id = docRef.id
-		return db.collection('companies').doc(id).update({
-			uid: id
+		.then(docRef => {
+			const id = docRef.id
+			return db.collection('companies').doc(id).update({
+				uid: id
+			})
+				.then((docRef) => {
+					console.log("Successfully created new company", id)
+					return
+				})
+				.catch((error) => {
+					console.log("Error adding new company id to database: ", error);
+					throw new functions.https.HttpsError("internal", "Error adding new company ID into database.")
+				})
 		})
-		.then( (docRef) => {
-			console.log("Successfully created new company", id)
-			return
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', 'Unable to create new company in database.')
 		})
-		.catch( (error) => {
-			console.log("Error adding new company id to database: ", error);
-			throw new functions.https.HttpsError("internal", "Error adding new company ID into database.")
-		})
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', 'Unable to create new company in database.')
-	})
 });
 
 exports.getCompanyProfile = functions.https.onCall((data, context) => {
@@ -787,54 +944,54 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide company uid.')
 	}
 	return db.collection("companies").doc(companyUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			return docRef.data()
-		} else {
-			throw new functions.https.HttpsError('not-found', 'Could not find company with uid: ', companyUID);
-		}
-	})
-	.then( data => {
-		const employees = data.employees || null;
-		const promises = Promise.all(employees.map( x => {
-			return db.collection('users').doc(x).get()
-			.then( docRef => {
-				return docRef.data();
-			} )
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		}
-		));
-		return promises
-		.then( employeeProfiles => {
-			data.employees = employeeProfiles;
-			return data;
+		.then(docRef => {
+			if (docRef.exists) {
+				return docRef.data()
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find company with uid: ', companyUID);
+			}
 		})
-	})
-	.then( data => {
-		const offices = data.offices || null;
-		const promises = Promise.all(offices.map( x => {
-			return db.collection('offices').doc(x).get()
-			.then( docRef => {
-				return docRef.data();
-			} )
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		}
-		));
-		return promises
-		.then( officeProfiles => {
-			data.offices = officeProfiles;
-			return data;
+		.then(data => {
+			const employees = data.employees || null;
+			const promises = Promise.all(employees.map(x => {
+				return db.collection('users').doc(x).get()
+					.then(docRef => {
+						return docRef.data();
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			}
+			));
+			return promises
+				.then(employeeProfiles => {
+					data.employees = employeeProfiles;
+					return data;
+				})
 		})
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', 'Could not get company from database.', companyUID);
-	})
+		.then(data => {
+			const offices = data.offices || null;
+			const promises = Promise.all(offices.map(x => {
+				return db.collection('offices').doc(x).get()
+					.then(docRef => {
+						return docRef.data();
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			}
+			));
+			return promises
+				.then(officeProfiles => {
+					data.offices = officeProfiles;
+					return data;
+				})
+		})
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', 'Could not get company from database.', companyUID);
+		})
 })
 
 exports.updateCompanyBioInfo = functions.https.onCall((data, context) => {
@@ -850,60 +1007,60 @@ exports.updateCompanyBioInfo = functions.https.onCall((data, context) => {
 	}
 
 	if (name !== null) {
-	  dict["name"] = name
+		dict["name"] = name
 	}
 
 	const firestoreUpdate = db.collection("companies").doc(companyUID).update(dict);
 	return Promise.all([firestoreUpdate])
-	.then(res => {
-		console.log("Successfully updated bio info for company: ", companyUID);
-		return
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', "There was an issue updating company profile bio info: ", companyUID);
-	})
+		.then(res => {
+			console.log("Successfully updated bio info for company: ", companyUID);
+			return
+		})
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', "There was an issue updating company profile bio info: ", companyUID);
+		})
 
 });
 
 exports.getAllOffices = functions.https.onCall((data, context) => {
 	return db.collection('offices').get()
-	.then( snapshot => {
-		const docs = snapshot.docs.map( x => x.data());
-		console.log("Successfully got all offices: ", docs);
-		return docs;
-	})
-	.then( docs => {
-		if (docs.length === 0) {
+		.then(snapshot => {
+			const docs = snapshot.docs.map(x => x.data());
+			console.log("Successfully got all offices: ", docs);
 			return docs;
-		}
-		const promises = Promise.all(docs.map( x => {
-			const buildingUID = x.buildingUID || null;
-			if (buildingUID === null) {
-				throw new functions.https.HttpsError("not-found", "Unable to find office's buildingUID for office: ", x.uid);
-			}
-			return db.collection('buildings').doc(buildingUID).get()
-			.then( docRef => {
-				if (docRef.exists) {
-					const data = docRef.data()
-					x.buildingName = data.name;
-					return x;
-				} else {
-					throw new functions.https.HttpsError("not-found", "Unable to find office's building with id: ", x.buildingUID);
-				}
-			})
-		}));
-
-		return promises
-		.then( offices => {
-			return { "offices": offices };
 		})
-		.catch( error => {
+		.then(docs => {
+			if (docs.length === 0) {
+				return docs;
+			}
+			const promises = Promise.all(docs.map(x => {
+				const buildingUID = x.buildingUID || null;
+				if (buildingUID === null) {
+					throw new functions.https.HttpsError("not-found", "Unable to find office's buildingUID for office: ", x.uid);
+				}
+				return db.collection('buildings').doc(buildingUID).get()
+					.then(docRef => {
+						if (docRef.exists) {
+							const data = docRef.data()
+							x.buildingName = data.name;
+							return x;
+						} else {
+							throw new functions.https.HttpsError("not-found", "Unable to find office's building with id: ", x.buildingUID);
+						}
+					})
+			}));
+
+			return promises
+				.then(offices => {
+					return { "offices": offices };
+				})
+				.catch(error => {
+					throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
+				})
+		})
+		.catch(error => {
 			throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
 		})
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
-	})
 });
 
 exports.createOffice = functions.https.onCall((data, context) => {
@@ -915,7 +1072,7 @@ exports.createOffice = functions.https.onCall((data, context) => {
 
 	var dict = {};
 	if (buildingUID === null) {
-		throw new functions.https.HttpsError('invalid-arguments','Must provide a building uid for office.');
+		throw new functions.https.HttpsError('invalid-arguments', 'Must provide a building uid for office.');
 	} else {
 		dict["buildingUID"] = buildingUID;
 	}
@@ -937,26 +1094,26 @@ exports.createOffice = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('offices').add(dict)
-	.then((docRef) => {
-		const id = docRef.id;
-		return db.collection('offices').doc(id).update({
-			uid: id
+		.then((docRef) => {
+			const id = docRef.id;
+			return db.collection('offices').doc(id).update({
+				uid: id
+			})
+				.then((docRef) => {
+					console.log("Successfully created office: ", docRef.id);
+					return id
+				})
+				.catch((error) => {
+					throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
+				})
 		})
-		.then( (docRef) => {
-			console.log("Successfully created office: ", docRef.id);
-			return id
+		.then((officeUID) => {
+			console.log('Successfully added office under building.');
+			return db.collection('buildings').doc(buildingUID).update({ 'offices': admin.firestore.FieldValue.arrayUnion(officeUID) });
 		})
-		.catch( (error) => {
+		.catch((error) => {
 			throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
 		})
-	})
-	.then((officeUID) => {
-		console.log('Successfully added office under building.');
-		return db.collection('buildings').doc(buildingUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)});
-	})
-	.catch( (error) => {
-		throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
-	})
 })
 
 exports.getOfficeProfile = functions.https.onCall((data, context) => {
@@ -965,75 +1122,75 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError('invalid-arguments', 'Must provide office uid.')
 	}
 	return db.collection("offices").doc(officeUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			return docRef.data()
-		} else {
-			throw new functions.https.HttpsError('not-found', 'Could not find office with uid: ', officeUID);
-		}
-	})
-	.then( docData => {
-		const buildingUID = docData.buildingUID || null;
-		if (buildingUID === null) {
-			throw new functions.https.HttpsError('internal', 'Could not get buildingUID for office from database.', officeUID);
-		}
-		return db.collection('buildings').doc(buildingUID).get()
-		.then( docRef => {
+		.then(docRef => {
 			if (docRef.exists) {
-				const data = docRef.data();
-				docData.building = docRef.data();
+				return docRef.data()
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Could not find office with uid: ', officeUID);
 			}
-			return docData;
 		})
-	})
-	.then( docData => {
-		const companyUID = docData.companyUID || null;
-		if (companyUID === null) {
-			return docData;
-		}
-		return db.collection('companies').doc(companyUID).get()
-		.then( docRef => {
-			if (docRef.exists) {
-				const data = docRef.data();
-				docData.company = docRef.data();
+		.then(docData => {
+			const buildingUID = docData.buildingUID || null;
+			if (buildingUID === null) {
+				throw new functions.https.HttpsError('internal', 'Could not get buildingUID for office from database.', officeUID);
 			}
-			return docData;
+			return db.collection('buildings').doc(buildingUID).get()
+				.then(docRef => {
+					if (docRef.exists) {
+						const data = docRef.data();
+						docData.building = docRef.data();
+					}
+					return docData;
+				})
 		})
-	})
-	.then( docData => {
-		const employees = docData.employees || null;
-		if (employees === null) {
-			return docData;
-		}
+		.then(docData => {
+			const companyUID = docData.companyUID || null;
+			if (companyUID === null) {
+				return docData;
+			}
+			return db.collection('companies').doc(companyUID).get()
+				.then(docRef => {
+					if (docRef.exists) {
+						const data = docRef.data();
+						docData.company = docRef.data();
+					}
+					return docData;
+				})
+		})
+		.then(docData => {
+			const employees = docData.employees || null;
+			if (employees === null) {
+				return docData;
+			}
 
-		const promises = Promise.all(employees.map( x => {
-			return db.collection('users').doc(x).get()
-			.then( docRef => {
-				if (docRef.exists) {
-					return docRef.data();
-				} else {
-					throw new functions.https.HttpsError('not-found', 'Employee not found in database.');
-				}
-			} )
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		}));
+			const promises = Promise.all(employees.map(x => {
+				return db.collection('users').doc(x).get()
+					.then(docRef => {
+						if (docRef.exists) {
+							return docRef.data();
+						} else {
+							throw new functions.https.HttpsError('not-found', 'Employee not found in database.');
+						}
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			}));
 
-		return promises
-		.then( employeeProfiles => {
-			docData.employees = employeeProfiles;
-			return docData;
+			return promises
+				.then(employeeProfiles => {
+					docData.employees = employeeProfiles;
+					return docData;
+				})
+				.catch(error => {
+					console.error(error);
+					throw error;
+				})
 		})
-		.catch( error => {
-			console.error(error);
-			throw error;
+		.catch(error => {
+			throw new functions.https.HttpsError('internal', 'Could not get office from database.', officeUID);
 		})
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('internal', 'Could not get office from database.', officeUID);
-	})
 });
 
 exports.addOfficeToCompany = functions.https.onCall((data, context) => {
@@ -1044,44 +1201,44 @@ exports.addOfficeToCompany = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a officeUID and companyUID.");
 	}
 	return db.collection('offices').doc(officeUID).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data()
-			const currCompanyUID = data.companyUID || null;
-			if (currCompanyUID !== null) {
-				if (currCompanyUID !== companyUID) {
-					throw new functions.https.HttpsError('failed-precondition','The office is currently assigned to a different company.');
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data()
+				const currCompanyUID = data.companyUID || null;
+				if (currCompanyUID !== null) {
+					if (currCompanyUID !== companyUID) {
+						throw new functions.https.HttpsError('failed-precondition', 'The office is currently assigned to a different company.');
+					}
 				}
+
+				const dbop1 = db.collection('offices').doc(officeUID).update({ 'companyUID': companyUID })
+					.then(docRef => {
+						console.log("Successfully added company to office.");
+						return
+					})
+					.catch(error => {
+						console.log("Error setting company for office.");
+						throw new functions.https.HttpsError("internal", "Unable to add company to office in database: ", error);
+					})
+
+				const dbop2 = db.collection('companies').doc(companyUID).update({ "offices": admin.firestore.FieldValue.arrayUnion(officeUID) })
+					.then(docRef => {
+						console.log("Successfully added office to company.");
+						return
+					})
+					.catch(error => {
+						console.log("Error adding office for company.");
+						throw new functions.https.HttpsError("internal", "Unable to add office to company in database: ", error);
+					})
+
+				return Promise.all([dbop1, dbop2]);
+			} else {
+				throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
 			}
-
-			const dbop1 = db.collection('offices').doc(officeUID).update({'companyUID': companyUID})
-			.then( docRef => {
-				console.log("Successfully added company to office.");
-				return
-			})
-			.catch( error => {
-				console.log("Error setting company for office.");
-				throw new functions.https.HttpsError("internal", "Unable to add company to office in database: ", error);
-			})
-
-			const dbop2 = db.collection('companies').doc(companyUID).update({"offices": admin.firestore.FieldValue.arrayUnion(officeUID)})
-			.then( docRef => {
-				console.log("Successfully added office to company.");
-				return
-			})
-			.catch( error => {
-				console.log("Error adding office for company.");
-				throw new functions.https.HttpsError("internal", "Unable to add office to company in database: ", error);
-			})
-
-			return Promise.all([dbop1, dbop2]);
-		} else {
+		})
+		.catch(error => {
 			throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
-		}
-	})
-	.catch( error => {
-		throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
-	})
+		})
 
 });
 
@@ -1156,19 +1313,19 @@ exports.addUserToCompany = functions.https.onCall((data, context) => {
 		throw new functions.https.HttpsError('invalid-arguments', "Need to provide a companyUID and userUID.");
 	}
 
-	const dbop1 = db.collection('users').doc(userUID).update({'companies': admin.firestore.FieldValue.arrayUnion(companyUID)})
+	const dbop1 = db.collection('users').doc(userUID).update({ 'companies': admin.firestore.FieldValue.arrayUnion(companyUID) })
 
-	const dbop2 = db.collection('companies').doc(companyUID).update({'employees': admin.firestore.FieldValue.arrayUnion(userUID)})
+	const dbop2 = db.collection('companies').doc(companyUID).update({ 'employees': admin.firestore.FieldValue.arrayUnion(userUID) })
 
 	return Promise.all([dbop1, dbop2])
-	.then (docRefs => {
-		console.log("Successfully added user to company.");
-		return
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		.then(docRefs => {
+			console.log("Successfully added user to company.");
+			return
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 });
 
 exports.setOfficeBuilding = functions.https.onCall((data, context) => {
@@ -1180,110 +1337,110 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 	}
 
 	return db.collection('offices').doc(officeUID).get()
-	.then( (docRef) => {
+		.then((docRef) => {
 
-		if (docRef.exists) {
-			const data = docRef.data()
-			const oldBuildingUID = data.buildingUID || null;
-			const promises = [];
-			const dbop1 = db.collection('offices').doc(officeUID).update({'buildingUID': buildingUID})
-			promises.push(dbop1);
+			if (docRef.exists) {
+				const data = docRef.data()
+				const oldBuildingUID = data.buildingUID || null;
+				const promises = [];
+				const dbop1 = db.collection('offices').doc(officeUID).update({ 'buildingUID': buildingUID })
+				promises.push(dbop1);
 
-			if (oldBuildingUID !== null) {
-				const dbop2 = db.collection('buildings').doc(oldBuildingUID).update({'offices': admin.firestore.FieldValue.arrayRemove(officeUID)})
-				promises.push(dbop2);
+				if (oldBuildingUID !== null) {
+					const dbop2 = db.collection('buildings').doc(oldBuildingUID).update({ 'offices': admin.firestore.FieldValue.arrayRemove(officeUID) })
+					promises.push(dbop2);
+				}
+				const dbop3 = db.collection('buildings').doc(buildingUID).update({ 'offices': admin.firestore.FieldValue.arrayUnion(officeUID) })
+				promises.push(dbop3);
+
+				return Promise.all(promises)
+					.then(docRefs => {
+						console.log("Successfully added user to company.");
+						return
+					})
+					.catch(error => {
+						console.error(error);
+						throw error;
+					})
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Unable to find office in database');
 			}
-			const dbop3 = db.collection('buildings').doc(buildingUID).update({'offices': admin.firestore.FieldValue.arrayUnion(officeUID)})
-			promises.push(dbop3);
-
-			return Promise.all(promises)
-			.then (docRefs => {
-				console.log("Successfully added user to company.");
-				return
-			})
-			.catch( error => {
-				console.error(error);
-				throw error;
-			})
-		} else {
-			throw new functions.https.HttpsError('not-found','Unable to find office in database');
-		}
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
+		})
+		.catch(error => {
+			console.error(error);
+			throw error;
+		})
 });
 
 exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 	const uid = context.auth.uid || null;
 	if (uid === null) {
-		throw new functions.https.HttpsError('invalid-arguments','Unable to find user uid. User must be signed in.');
+		throw new functions.https.HttpsError('invalid-arguments', 'Unable to find user uid. User must be signed in.');
 	}
 	return db.collection('users').doc(uid).get()
-	.then( docRef => {
-		if (docRef.exists) {
-			const data = docRef.data();
-			return data.offices;
-		} else {
-			throw new functions.https.HttpsError('not-found','Unable to find user in database.');
-		}
-	})
-	.then( userOffices => {
-		if (userOffices === null) {
-			return {};
-		}
-
-		const promises = userOffices.map( x => {
-			return db.collection('offices').doc(x).get()
-			.then( docRef => {
-				if (docRef.exists) {
-					return docRef.data();
-				} else {
-					throw new functions.https.HttpsError('not-found','Unable to find office.');
-				}
-			})
-			.catch(error => {
-				throw error;
-			})
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				return data.offices;
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Unable to find user in database.');
+			}
 		})
+		.then(userOffices => {
+			if (userOffices === null) {
+				return {};
+			}
 
-		return Promise.all(promises)
-		.then( officeProfiles => {
-			return officeProfiles;
+			const promises = userOffices.map(x => {
+				return db.collection('offices').doc(x).get()
+					.then(docRef => {
+						if (docRef.exists) {
+							return docRef.data();
+						} else {
+							throw new functions.https.HttpsError('not-found', 'Unable to find office.');
+						}
+					})
+					.catch(error => {
+						throw error;
+					})
+			})
+
+			return Promise.all(promises)
+				.then(officeProfiles => {
+					return officeProfiles;
+				})
+				.catch(error => {
+					throw error;
+				})
+		})
+		.then(officeData => {
+			var promises = officeData.map(x => {
+				const buildingUID = x.buildingUID;
+				return db.collection('buildings').doc(buildingUID).get()
+					.then(docRef => {
+						if (docRef.exists) {
+							const data = docRef.data();
+							x.building = data;
+						}
+						return x
+					})
+					.catch(error => {
+						throw error;
+					})
+			})
+
+			return Promise.all(promises)
+				.then(newOfficeData => {
+					return newOfficeData;
+				})
+				.catch(error => {
+					throw error;
+				})
 		})
 		.catch(error => {
+			console.error(error);
 			throw error;
 		})
-	})
-	.then( officeData => {
-		var promises = officeData.map( x => {
-			const buildingUID = x.buildingUID;
-			return db.collection('buildings').doc(buildingUID).get()
-			.then( docRef => {
-				if (docRef.exists) {
-					const data = docRef.data();
-					x.building = data;
-				}
-				return x
-			})
-			.catch( error => {
-				throw error;
-			})
-		})
-
-		return Promise.all(promises)
-		.then( newOfficeData => {
-			return newOfficeData;
-		})
-		.catch(error => {
-			throw error;
-		})
-	})
-	.catch( error => {
-		console.error(error);
-		throw error;
-	})
 });
 
 
