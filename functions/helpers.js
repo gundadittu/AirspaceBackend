@@ -18,6 +18,15 @@ function validateServiceRequestType(type) {
 	return allTypes.includes(type); 
 }
 
+exports.validateConferenceRoomAmenity = function(type) { 
+	return validateConferenceRoomAmenity(type);
+}
+
+function validateConferenceRoomAmenity(type) { 
+	const allTypes = ['screenSharing','smartTV','projector','speakers','largeMonitor','conferencePhone','powerStrip','hdmiCables','adapters','builtInComputer','microphone','videoConferencing','inputSwitchingEnabled'];
+	return allTypes.includes(type); 
+}
+
 exports.getExpandedOfficeData = function(officeUIDs, db) {
 	return getExpandedOfficeData(officeUIDs, db);
 }

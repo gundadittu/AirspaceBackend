@@ -810,7 +810,7 @@ exports.createEventForOfficeAdmin = function (data, context, db, admin) {
     const startDate = new Date(data.startDate) || null;
     const endDate = new Date(data.endDate) || null;
     const description = data.description || null;
-    let address = null;
+    let address = data.address || null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -836,6 +836,10 @@ exports.createEventForOfficeAdmin = function (data, context, db, admin) {
             }
         })
         .then(() => {
+            if (address !== null) {
+                return
+            }
+
             return db.collection('offices').doc(selectedOfficeUID).get()
                 .then(docRef => {
                     if (docRef.exists) {
@@ -845,21 +849,21 @@ exports.createEventForOfficeAdmin = function (data, context, db, admin) {
                         throw new functions.https.HttpsError('not-found', 'This office does not exist in backend.');
                     }
                 })
-        })
-        .then(buildingUID => {
-            if (buildingUID === null) {
-                throw new functions.https.HttpsError('not-found', 'This offices building does not exist in backend.');
-            }
-
-            return db.collection('buildings').doc(buildingUID).get()
-                .then(docRef => {
-                    if (docRef.exists) {
-                        const data = docRef.data()
-                        address = data.address;
-                        return
-                    } else {
-                        throw new functions.https.HttpsError('not-found', 'This office does not exist in backend.');
+                .then(buildingUID => {
+                    if (buildingUID === null) {
+                        throw new functions.https.HttpsError('not-found', 'This offices building does not exist in backend.');
                     }
+
+                    return db.collection('buildings').doc(buildingUID).get()
+                        .then(docRef => {
+                            if (docRef.exists) {
+                                const data = docRef.data()
+                                address = data.address;
+                                return
+                            } else {
+                                throw new functions.https.HttpsError('not-found', 'This office does not exist in backend.');
+                            }
+                        })
                 })
         })
         .then(() => {
@@ -1207,16 +1211,16 @@ exports.getServiceRequestAutoRoutingForOfficeAdmin = function (data, context, db
                 throw new functions.https.HttpsError('permission-denied', 'No such user found.');
             }
         })
-        .then( () => { 
+        .then(() => {
             return db.collection('serviceRequestsAutoRouting').doc(selectedOfficeUID).get()
-            .then( docRef => { 
-                if (docRef.exists) { 
-                    const data = docRef.data(); 
-                    return data; 
-                } else { 
-                    return {};
-                }
-            })
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data();
+                        return data;
+                    } else {
+                        return {};
+                    }
+                })
         })
 }
 
@@ -1257,5 +1261,120 @@ exports.updateServiceRequestAutoRoutingForOfficeAdmin = function (data, context,
             }
 
             return db.collection('serviceRequestsAutoRouting').doc(selectedOfficeUID).update(validatedEmails);
+        })
+}
+
+exports.getAnnouncementsForOfficeAdmin = function (data, context, db) {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return db.collection('officeAnnouncements').where('officeUID', 'array-contains', selectedOfficeUID).get()
+                .then(docSnapshots => {
+                    const docsData = docSnapshots.docs.map(x => { return x.data() });
+                    return docsData;
+                })
+        })
+}
+exports.postAnnouncementForOfficeAdmin = function (data, context, db, admin) {
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const userUID = context.auth.uid || null;
+    const message = data.message || null;
+
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError('invalid-argument', 'Need to provide a selectedOfficeUID.');
+    }
+
+    if ((userUID === null) || (message === null)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Need to provide a selectedOfficeUID.');
+    }
+
+    return db.collection('users').doc(userUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const officeAdmin = data.officeAdmin;
+                if (officeAdmin.includes(selectedOfficeUID) === false) {
+                    throw new functions.https.HttpsError('permission-denied', 'User is not an admin for this office.');
+                }
+                return
+            } else {
+                throw new functions.https.HttpsError('permission-denied', 'No such user found.');
+            }
+        })
+        .then(() => {
+            return db.collection('officeAnnouncements').add({ message: message, userUID: userUID, officeUID: admin.firestore.FieldValue.arrayUnion(selectedOfficeUID), timestamp: admin.firestore.FieldValue.serverTimestamp() })
+                .then((docRef) => {
+                    if (docRef.exists) {
+                        const uid = docRef.uid || null;
+                        if (uid === null) {
+                            throw new functions.https.HttpsError('not-found', 'Unable to find announcement object in database.');
+                        }
+                        return uid;
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'Unable to find announcement object in database.');
+                    }
+                })
+                .then(uid => {
+                    return db.collection('officeAnnouncements').doc(uid).update({ uid: uid });
+                })
+        })
+}
+
+exports.changeRegisteredGuestStatusForOfficeAdmin = function (data, context, db) {
+    const registeredGuestUID = data.registeredGuestUID || null;
+    const userUID = context.auth.uid || null;
+    const newArrivalStatus = (data.newStatus !== null) ? data.newStatus : null;
+
+    if ((newArrivalStatus === null) || (typeof (newArrivalStatus) !== Boolean)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Need to provide a newArrivalStatus.');
+    }
+
+    return db.collection('registeredGuests').doc(registeredGuestUID).get()
+        .then(docRef => {
+            if (docRef.exists) {
+                const data = docRef.data();
+                const visitingOfficeUID = data.visitingOfficeUID || null;
+                if (visitingOfficeUID === null) {
+                    throw new functions.https.HttpsError('not-found', 'Unable to find an associated office with this registered guest.');
+                }
+                return visitingOfficeUID;
+            } else {
+                throw new functions.https.HttpsError('not-found', 'Unable to find registered guest in database.');
+            }
+        })
+        .then(visitingOfficeUID => {
+            return db.collection('offices').doc(visitingOfficeUID).get()
+                .then(docRef => {
+                    if (docRef.exists) {
+                        const data = docRef.data();
+                        const officeAdmin = data.officeAdmin || null;
+                        if (officeAdmin === null) {
+                            throw new functions.https.HttpsError('permission-denied', 'This office has not admins.');
+                        }
+                        if (officeAdmin.includes(userUID) === false) {
+                            throw new functions.https.HttpsError('permission-denied', 'This user is not an office admin.');
+                        }
+                        return
+                    } else {
+                        throw new functions.https.HttpsError('not-found', 'Unable to find an associated office with this registered guest.');
+                    }
+                })
+        })
+        .then( () => { 
+            return db.collection('registeredGuests').doc(registeredGuestUID).update({arrived: newArrivalStatus});
         })
 }

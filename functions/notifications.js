@@ -96,8 +96,8 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 							"notification": {
 								"title": notificationTitle,
 								"body": notificationBody
-							}, 
-							"apns":{
+							},
+							"apns": {
 								"payload": {
 									"aps": {
 										"sound": "default"
@@ -201,7 +201,7 @@ exports.notifyUserofServiceRequestStatusChange = function (change, context, db, 
 								"type": "serviceRequestUpdate",
 								'requestUID': context.params.serviceRequestID
 							},
-							"apns":{
+							"apns": {
 								"payload": {
 									"aps": {
 										"sound": "default"
@@ -289,6 +289,101 @@ function getTitlefromServiceRequestType(type) {
 	}
 }
 
+exports.notifyUserofOfficeAnnouncement = function (snap, context, db, admin) {
+	var data = snap.data();
+	var announcementMessage = data.message || null;
+	var officeUIDs = data.officeUID || null;
+
+	if (officeUIDs === null) {
+		throw new functions.https.HttpsError('invalid-arguments', 'Need to provide officeUIDs to announcement.');
+	}
+
+	return officeUIDs.map(element => {
+		return db.collection('users').where('offices', 'array-contains', element).get()
+			.then(docSnapshots => {
+				const docsData = docSnapshots.docs.map(z => z.data());
+				return docsData;
+			})
+			.then(usersData => {
+				return usersData.map(x => {
+					const registrationTokens = x.registrationToken || null;
+					const userUID = x.uid || null;
+
+					if ((registrationTokens === null) || (userUID === null)) {
+						return
+					}
+
+					const notificationTitle = "Office Announcement";
+					const notBody = announcementMessage;
+					newValue.notificationTitle = notificationTitle;
+					newValue.notificationBody = notBody;
+
+					var promises = registrationTokens.map(y => {
+						const message = {
+							"token": y,
+							"notification": {
+								"title": notificationTitle,
+								"body": notBody,
+							},
+							"data": {
+								"type": "announcement",
+								'eventUID': context.params.announcementID
+							},
+							"apns": {
+								"payload": {
+									"aps": {
+										"sound": "default"
+									}
+								}
+							}
+						};
+
+						return admin.messaging().send(message)
+							.then((response) => {
+								// Response is a message ID string.
+								console.log('Successfully sent message:', response);
+								return newValue;
+							})
+							.then(data => {
+								console.log('starting adding notifications');
+								const dataDict = { 'announcementUID': context.params.announcementID };
+								return db.collection('userNotifications').doc(userUID).collection('notifications').add({
+									type: 'announcement',
+									readStatus: false,
+									data: dataDict,
+									title: data.notificationTitle,
+									body: data.notificationBody,
+									timestamp: new Date(new Date().toUTCString())
+								})
+									.then(docRef => {
+										console.log('did add notifications');
+										return db.collection('userNotifications').doc(userUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
+									})
+									.catch(error => {
+										console.log(error);
+										return
+									})
+							})
+							.catch((error) => {
+								console.error(error);
+								throw error;
+							});
+					});
+
+					return Promise.all(promises)
+						.catch(error => {
+							console.error(error);
+							throw error;
+						})
+				});
+			})
+			.catch(error => {
+				console.error(error);
+				throw error;
+			})
+	});
+}
+
 exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 	var newValue = snap.data();
 	const officeUIDs = newValue.officeUIDs || null;
@@ -328,7 +423,7 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 									"type": "newEvent",
 									'eventUID': context.params.eventID
 								},
-								"apns":{
+								"apns": {
 									"payload": {
 										"aps": {
 											"sound": "default"

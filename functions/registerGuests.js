@@ -146,3 +146,13 @@ exports.cancelRegisteredGuest = function(data, context, db) {
 		throw error;
 	})
 }
+
+exports.guestSelfCheckIn = function (data, context, db) {
+    const registeredGuestUID = data.registeredGuestUID || null;
+
+    if (registeredGuestUID === null)  {
+        throw new functions.https.HttpsError('invalid-argument', 'Need to provide a registeredGuestUID.');
+    }
+
+	return db.collection('registeredGuests').doc(registeredGuestUID).update({arrived: true});
+}

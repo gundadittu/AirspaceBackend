@@ -132,12 +132,20 @@ exports.notifyUserofEventCreation = functions.firestore.document('events/{eventI
 	return notificationFunctions.notifyUserofEventCreation(snap, context, db, admin);
 });
 
+exports.notifyUserofOfficeAnnouncement = functions.firestore.document('officeAnnouncements/{announcementID}').onCreate((snap, context) => {
+	return notificationFunctions.notifyUserofOfficeAnnouncement(snap, context, db, admin);
+});
+
 exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
 	return officeFunctions.getEmployeesForOffice(data, context, db);
 });
 
 exports.getSpaceInfoForUser = functions.https.onCall((data, context) => {
 	return officeFunctions.getSpaceInfoForUser(data, context, db, admin);
+});
+
+exports.guestSelfCheckIn = functions.https.onCall((data, context) => { 
+	return registerGuestFunctions.guestSelfCheckIn(data, context, db);
 });
 
 // *---- OFFICE ADMIN FUNCTIONS ---* 
@@ -217,6 +225,17 @@ exports.updateServiceRequestAutoRoutingForOfficeAdmin = functions.https.onCall((
 	return officeAdminFunctions.updateServiceRequestAutoRoutingForOfficeAdmin(data, context, db);
 })
 
+exports.postAnnouncementForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.postAnnouncementForOfficeAdmin(data, context, db, admin);
+})
+
+exports.getAnnouncementsForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.getAnnouncementsForOfficeAdmin(data, context, db);
+})
+
+exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data, context) => { 
+	return officeAdminFunctions.changeRegisteredGuestStatusForOfficeAdmin(data, context, db);
+})
 
 // *----- ----*
 
