@@ -244,22 +244,21 @@ exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('se
 	const issueType = newValue.issueType || null;
 	const officeUID = newValue.officeUID || null; 
 	const hostUID = newValue.userUID || null;
+	const requestUID = context.params.uid || null;
 
-	if ((officeUID === null) || (issueType === null) || (hostUID === null)) { 
-		console.log(1);
+	if ((officeUID === null) || (issueType === null) || (hostUID === null) || (requestUID === null)) { 
 		throw new functions.https.HttpsError('invalid-arguments','Missing required arguments'); 
 	}
 
 	if (helperFunctions.validateServiceRequestType(issueType) === false) { 
-		console.log(2);
 		throw new functions.https.HttpsError('not-found','Not a valid service issue type'); 
 	}
 
 	let allEmails = [];
 
-	let requestType = issueType; 
+	let requestType = helperFunctions.getServiceRequestTitle(issueType); 
 	let requestStatus = newValue.status || null;
-	let requestTimestamp = newValue.timestamp || null;
+	let requestTimestamp = newValue.timestamp.toDate().toString() || null;
 	let requestDetails = newValue.note || null;
 	let requestOfficeName = null;
 	let requestAddress = null;
@@ -273,91 +272,63 @@ exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('se
 	.then( docRef => { 
 		if (docRef.exists) { 
 			const data = docRef.data();
-			console.log(data);
 			const emails = data[issueType] || null;
-			// let emails = null; 
-			// for (let key in data) { 
-			// 	console.log(2.5);
-			// 	const value = data[key];
-			// 	console.log(key);
-			// 	console.log(value);
-			// 	if (key === issueType) { 
-			// 		emails = value; 
-			// 		break;
-			// 	}
-			// }
 			
 			if (emails === null) {
-				console.log(3);
-				console.log(issueType);
 				throw new functions.https.HttpsError('not-found','No emails provided for this service request.'); 
 			}
 			allEmails = emails;
-			console.log(4);
 			return 
 		} else { 
-			console.log(5);
 			throw new functions.https.HttpsError('not-found','No emails provided for this service request.'); 
 		}
 	})
 	.then(() => { 
 		const firstPromise = db.collection('users').doc(hostUID).get()
 		.then( docRef => { 
-			const data = docRef.data || null; 
+			const data = docRef.data() || null; 
 			if (data === null) { 
-				console.log(6);
 				throw new functions.https.HttpsError('not-found','No user info found for this service request.');  
 			}
 			requestHostName = data.firstName+" "+data.lastName; 
 			requestHostEmail = data.email;
-			console.log(7); 
 			return 
 		})
 
 		const secondPromise = db.collection('offices').doc(officeUID).get()
 		.then( docRef => { 
-			const data = docRef.data || null; 
+			const data = docRef.data() || null; 
 			if (data === null) { 
-				console.log(8); 
 				return 
 			}
 			requestOfficeName = data.name; 
 			const buildingUID = data.buildingUID || null; 
 			if (buildingUID === null) { 
-				console.log(9); 
 				return 
 			}
 			return db.collection('buildings').doc(buildingUID).get()
-			.then( docRef => { 
-				const data = docRef.data() || null; 
-				if (data === null) { 
-					console.log(10); 
+			.then( bDocRef => { 
+				const bData = bDocRef.data() || null; 
+				if (bData === null) { 
 					return 
 				}
-				requestAddress = data.address; 
-				console.log(11); 
+				requestAddress = bData.address; 
 				return 
 			})
 		})
-		console.log(12); 
-		return Promise.all[firstPromise, secondPromise]; 
+
+		return Promise.all([firstPromise, secondPromise]);
 	})
 	.then(() => { 
-		// let requestType = issueType; 
-		// let requestStatus = newValue.status || null;
-		// let requestTimestamp = newValue.timestamp || null;
-		// let requestDetails = newValue.note || null;
-		// let requestOfficeName = null;
-		// let requestAddress = null;
-		// let requestHostName = null; 
-		// let requestHostEmail = null; 
-		// let requestImageURL = null;
-		// let finishedURL = null; 
-		// let inProgressURL = null;
-
+		return storageFunctions.getServiceRequestImageURL(requestUID, admin)
+		.then( url => { 
+			requestImageURL = url;
+			return
+		})
+	})
+	.then(() => { 
 		let dict = {
 			recipientEmails: allEmails, 
-			request: newValue, 
 			requestType: requestType, 
 			requestStatus: requestStatus, 
 			requestTimestamp: requestTimestamp, 
@@ -365,12 +336,11 @@ exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('se
 			requestOfficeName: requestOfficeName, 
 			requestAddress: requestAddress, 
 			requestHostName: requestHostName, 
+			requestHostEmail: requestHostEmail, 
 			requestImageURL: requestImageURL, 
 			finishedURL: finishedURL, 
 			inProgressURL: inProgressURL
 		};
-		console.log(13); 
-		console.log(dict);
 		return emailHelperFunctions.sendServiceRequestAutoRoutingEmail(dict);
 	})
 });

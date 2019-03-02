@@ -18,6 +18,26 @@ function validateServiceRequestType(type) {
 	return allTypes.includes(type); 
 }
 
+exports.getServiceRequestTitle = function(type) { 
+	return getServiceRequestTitle(type);
+}
+
+function getServiceRequestTitle(type) { 
+	const allTypes = {
+		'infoTech': "IT",
+		'plumbing':"Plumbing",
+		'lighting': "Lighting",
+		'generalMaintenance': 'General Maintenance',
+		'furniture': 'Furniture',
+		'door': "Door",
+		'heatingCooling': "Heating/Cooling",
+		'cleaning': 'Cleaning',
+		'supplies': "Supplies",
+		'other': 'Other'
+	};
+	return allTypes[type] || 'Other'; 
+}
+
 exports.validateConferenceRoomAmenity = function(type) { 
 	return validateConferenceRoomAmenity(type);
 }

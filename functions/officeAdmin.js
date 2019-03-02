@@ -1289,6 +1289,7 @@ exports.getAnnouncementsForOfficeAdmin = function (data, context, db) {
                 })
         })
 }
+
 exports.postAnnouncementForOfficeAdmin = function (data, context, db, admin) {
     const selectedOfficeUID = data.selectedOfficeUID || null;
     const userUID = context.auth.uid || null;
@@ -1318,15 +1319,11 @@ exports.postAnnouncementForOfficeAdmin = function (data, context, db, admin) {
         .then(() => {
             return db.collection('officeAnnouncements').add({ message: message, userUID: userUID, officeUID: admin.firestore.FieldValue.arrayUnion(selectedOfficeUID), timestamp: admin.firestore.FieldValue.serverTimestamp() })
                 .then((docRef) => {
-                    if (docRef.exists) {
-                        const uid = docRef.uid || null;
-                        if (uid === null) {
-                            throw new functions.https.HttpsError('not-found', 'Unable to find announcement object in database.');
-                        }
-                        return uid;
-                    } else {
-                        throw new functions.https.HttpsError('not-found', 'Unable to find announcement object in database.');
+                    const uid = docRef.id || null;
+                    if (uid === null) {
+                        throw new functions.https.HttpsError('not-found', 'Unable to find announcement object in database - 1.');
                     }
+                    return uid;
                 })
                 .then(uid => {
                     return db.collection('officeAnnouncements').doc(uid).update({ uid: uid });
@@ -1337,12 +1334,13 @@ exports.postAnnouncementForOfficeAdmin = function (data, context, db, admin) {
 exports.changeRegisteredGuestStatusForOfficeAdmin = function (data, context, db) {
     const registeredGuestUID = data.registeredGuestUID || null;
     const userUID = context.auth.uid || null;
-    const newArrivalStatus = (data.newStatus !== null) ? data.newStatus : null;
+    let newArrivalStatus = (data.newArrivalStatus !== null) ? data.newArrivalStatus : null; 
 
-    if ((newArrivalStatus === null) || (typeof (newArrivalStatus) !== Boolean)) {
+    if (newArrivalStatus === null) {
         throw new functions.https.HttpsError('invalid-argument', 'Need to provide a newArrivalStatus.');
     }
 
+    console.log(newArrivalStatus);
     return db.collection('registeredGuests').doc(registeredGuestUID).get()
         .then(docRef => {
             if (docRef.exists) {
