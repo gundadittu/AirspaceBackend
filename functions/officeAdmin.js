@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
 const helperFunctions = require('./helpers');
 const storageFunctions = require('./storage');
+const emailHelpersFunctions = require('./emailHelper');
 
 exports.removeUserFromOffice = function (data, context, db, admin) {
     const selectedUserUID = data.selectedUserUID || null;
@@ -114,15 +115,25 @@ exports.addUserToOffice = function (data, context, db, admin) {
                 const secOpDict = { 'employees': admin.firestore.FieldValue.arrayUnion(newUserUID), 'officeAdmin': admin.firestore.FieldValue.arrayUnion(newUserUID) };
                 const secOp = db.collection('offices').doc(selectedOfficeUID).update(secOpDict);
 
-                return Promise.all([firstOp, secOp]);
+                return Promise.all([firstOp, secOp])
+                .then( () => { 
+                    return newUserUID; 
+                })
             } else {
                 const firstOpDict = { 'offices': admin.firestore.FieldValue.arrayUnion(selectedOfficeUID) };
                 const firstOp = db.collection('users').doc(newUserUID).update(firstOpDict);
                 const secOpDict = { 'employees': admin.firestore.FieldValue.arrayUnion(newUserUID) };
                 const secOp = db.collection('offices').doc(selectedOfficeUID).update(secOpDict);
 
-                return Promise.all([firstOp, secOp]);
+                return Promise.all([firstOp, secOp])
+                .then( () => { 
+                    return newUserUID; 
+                })
             }
+        })
+        .then( (newUserUID) => { 
+            emailHelpersFunctions.triggerUserCreationEmail(newUserUID, db, admin);
+            return 
         })
         .catch(error => {
             console.error(error);

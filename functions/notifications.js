@@ -1,4 +1,5 @@
 const functions = require('firebase-functions');
+const emailHelperFunctions = require('./emailHelper');
 
 exports.getUsersNotifications = function (data, context, db) {
 	const userUID = context.auth.uid || null;
@@ -67,10 +68,16 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 	const arrived = newValue.arrived || null;
 	const hostUID = oldValue.hostUID || null;
 	const guestName = oldValue.guestName || null;
+	const guestEmail = oldValue.guestEmail || null;
+	const visitingOfficeUID = oldValue.visitingOfficeUID || null;
 
-	if (arrived === null || hostUID === null) {
-		console.log("Need to provide a value for arrived and hostUID to trigger notification to host.");
-		return {};
+	let hostName = null;
+	let hostEmail = null;
+	let visitingOfficeName = null;
+	let visitingOfficeAddress = null;
+
+	if ((arrived === null) || (hostUID === null) || (visitingOfficeUID === null)) {
+		throw new functions.https.HttpsError('invalid-argument', "Need to provide a value for arrived and hostUID and visitingOfficeUID to trigger notification to host.")
 	}
 
 	if (arrived === true && (oldValue.arrived === null || oldValue.arrived === false)) {
@@ -78,6 +85,8 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 			.then(docRef => {
 				if (docRef.exists) {
 					const data = docRef.data();
+					hostName = data.firstName || null;
+					hostEmail = data.email || null;
 					const registrationTokens = data.registrationToken || null;
 
 					if (registrationTokens === null) {
@@ -148,6 +157,41 @@ exports.notifyUserOfArrivedGuest = function (change, context, db, admin) {
 						throw error;
 					})
 
+			})
+			.then(() => {
+
+				return db.collection('offices').doc(visitingOfficeUID).get()
+					.then(docRef => {
+						const data = docRef.data() || null;
+						if (data === null) {
+							throw new functions.https.HttpsError('not-found', 'Unable to access data for office object.');
+						}
+						visitingOfficeName = data.name || null;
+						const buildingUID = data.buildingUID || null;
+						if (buildingUID === null) {
+							return
+						}
+						return db.collection('buildings').doc(buildingUID).get()
+							.then(docRef => {
+								const data = docRef.data() || null;
+								if (data === null) {
+									throw new functions.https.HttpsError('not-found', 'Unable to access data for building object.');
+								}
+								visitingOfficeAddress = data.address || null;
+								return
+							})
+					})
+					.then(() => {
+						const dict = {
+							userName: hostName,
+							userEmail: hostEmail,
+							guestName: guestName,
+							guestEmail: guestEmail,
+							visitingOfficeName: visitingOfficeName,
+							visitingOfficeAddress: visitingOfficeAddress
+						}
+						return emailHelperFunctions.sendArrivedRegGuestCreationEmail(dict);
+					})
 			})
 			.catch(error => {
 				console.error(error);
