@@ -239,7 +239,70 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 	return officeAdminFunctions.changeRegisteredGuestStatusForOfficeAdmin(data, context, db);
 })
 
-// *----- ----*
+// *--------------*
+
+exports.updateServiceRequestStatusFromEmailLink = functions.https.onCall((data, context) => {
+	const selectedServiceRequestUID = data.selectedServiceRequestUID || null;
+	const newStatus = data.newStatus || null;
+
+	if ((selectedServiceRequestUID === null) || (newStatus === null)) {
+		throw new functions.https.HttpsError('invalid-arguments', 'Must provide selectedServiceRequestUID & newStatus.');
+	}
+
+	const allStatusOptions = ['open', 'pending', 'closed'];
+	if (allStatusOptions.includes(newStatus) === false) {
+		throw new functions.https.HttpsError('invalid-arguments', 'Must provide a valid newStatus.');
+	}
+
+	return db.collection('serviceRequests').doc(selectedServiceRequestUID).get()
+		.then(docRef => {
+			if (docRef.exists) {
+				const data = docRef.data();
+				const officeUID = data.officeUID || null;
+				if (officeUID === null) {
+					throw new functions.https.HttpsError('permission-denied', 'This service request does not belong to an office.');
+				}
+				return
+			} else {
+				throw new functions.https.HttpsError('not-found', 'Service request not found.')
+			}
+		})
+		.then(() => {
+			return db.collection('serviceRequests').doc(selectedServiceRequestUID).update({ status: newStatus });
+		})
+})
+
+exports.getCreatePasswordLink = functions.https.onCall((data, context) => {
+	const uid = data.uid || null;
+	if (uid === null) {
+		throw new functions.https.HttpsError('invalid-argument', 'Need to provide a value for uid argument.');
+	}
+	return db.collection('users').doc(uid).get()
+		.then(docRef => {
+			const data = docRef.data() || null;
+			if (data === null) {
+				throw new functions.https.HttpsError('not-found', 'Data not found for user object.');
+			}
+			const email = data.email || null;
+			if (email === null) {
+				throw new functions.https.HttpsError('not-found', 'Email not found for user object.');
+			}
+			const setInitialPassword = data.setInitialPassword || null;
+			if (setInitialPassword === true) {
+				throw new functions.https.HttpsError('permission-denied', 'This link has expired. User has already set their initial password.');
+			}
+			return email
+		})
+		.then(email => {
+			return admin.auth().generatePasswordResetLink(email)
+		})
+		.then((passwordResetURL) => {
+			return db.collection('users').doc(uid).update({ setInitialPassword: true })
+				.then(() => {
+					return passwordResetURL;
+				})
+		})
+})
 
 exports.triggerRegGuestCreationEmail = functions.firestore.document('registeredGuests/{uid}').onCreate((snap, context) => {
 	const newValue = snap.data();
@@ -251,7 +314,8 @@ exports.triggerRegGuestCreationEmail = functions.firestore.document('registeredG
 	const guestEmail = newValue.guestEmail || null;
 	const hostUID = newValue.hostUID || null;
 	const visitingOfficeUID = newValue.visitingOfficeUID || null;
-	const visitingDateTime = newValue.expectedVisitDate.toDate().toString() || null;
+	var chicagoTime = newValue.expectedVisitDate.toDate().toLocaleString("en-US", { timeZone: "America/Chicago" });
+	const visitingDateTime = chicagoTime || null;
 	const checkInURL = webAppBaseURL + '/guestSelfCheckIn/' + regGuestUID;
 	let visitingOfficeName = null;
 	let visitingOfficeAddress = null;
@@ -297,7 +361,7 @@ exports.triggerRegGuestCreationEmail = functions.firestore.document('registeredG
 		})
 		.then(() => {
 			let dict = {
-				guestEmail: guestEmail, 
+				guestEmail: guestEmail,
 				guestName: guestName,
 				hostName: hostName,
 				visitingOfficeName: visitingOfficeName,
@@ -328,7 +392,8 @@ exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('se
 
 	let requestType = helperFunctions.getServiceRequestTitle(issueType);
 	let requestStatus = newValue.status || null;
-	let requestTimestamp = newValue.timestamp.toDate().toString() || null;
+	var chicagoTime = newValue.timestamp.toDate().toLocaleString("en-US", { timeZone: "America/Chicago" });
+	let requestTimestamp = chicagoTime || null;
 	let requestDetails = newValue.note || null;
 	let requestOfficeName = null;
 	let requestAddress = null;

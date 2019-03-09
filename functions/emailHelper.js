@@ -2,6 +2,9 @@ const sgMail = require('@sendgrid/mail');
 const functions = require('firebase-functions');
 sgMail.setApiKey(functions.config().sendgrid.key);
 
+const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
+
+
 exports.sendArrivedRegGuestCreationEmail = (data) => {
 
   // Need to provide the below in data: 
@@ -33,6 +36,7 @@ exports.sendArrivedRegGuestCreationEmail = (data) => {
 }
 
 exports.sendRegGuestCreationEmail = (data) => {
+  
   // Need to provide the below in data: 
   // guestName
   // hostName
@@ -63,7 +67,6 @@ exports.sendRegGuestCreationEmail = (data) => {
 }
 
 exports.triggerUserCreationEmail = (userUID, db, admin) => {
-
   if (userUID === null) {
     throw new functions.https.HttpsError('invalid-argument', 'Need to provide userUID to trigger welcome email.');
   }
@@ -105,19 +108,14 @@ exports.triggerUserCreationEmail = (userUID, db, admin) => {
           officeName = name;
           return
         })
-
     })
     .then(() => {
-      return admin.auth().generatePasswordResetLink(email)
-        .then((resetPasswordURL) => {
-          return sendUserCreationEmail({ userName: firstName, officeName: officeName, userEmail: email, resetPasswordURL: resetPasswordURL })
-        })
+      const resetPasswordURL = webAppBaseURL+'/createPassword/'+userUID;
+      return sendUserCreationEmail({ userName: firstName, officeName: officeName, userEmail: email, resetPasswordURL: resetPasswordURL });
     })
 }
 
 const sendUserCreationEmail = (data) => {
-
-
   // Need to provide the below in data: 
   // resetPasswordURL
   // userEmail

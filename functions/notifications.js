@@ -231,7 +231,7 @@ exports.notifyUserofServiceRequestStatusChange = function (change, context, db, 
 						notBody = "We have finished working on your request."
 					}
 					const notificationTitle = getTitlefromServiceRequestType(issueType);
-					data.notificationTitle = notificationTitle
+					data.notificationTitle = notificationTitle;
 					data.notificationBody = notBody;
 
 					var promises = registrationTokens.map(x => {
@@ -300,36 +300,28 @@ exports.notifyUserofServiceRequestStatusChange = function (change, context, db, 
 
 function getTitlefromServiceRequestType(type) {
 
-	if (type === 'furnitureRepair') {
-		return "Furniture Repair"
-	} else if (type === "brokenFixtures") {
-		return "Fixture Repair"
-	} else if (type === "lightsNotWorking") {
-		return "Lights Not Working"
-	} else if (type === 'waterDamageLeak') {
-		return "Water/Damage Leak"
-	} else if (type === 'brokenACHeating') {
-		return "Broken AC/Heating"
+	if (type === 'infoTech') {
+		return "IT"
+	} else if (type === "plumbing") {
+		return "Plumbing"
+	} else if (type === "lighting") {
+		return "Lighting"
+	} else if (type === 'generalMaintenance') {
+		return "General Maintenance"
+	} else if (type === 'furniture') {
+		return "Furniture"
 	} else if (type === 'kitchenIssues') {
 		return "Kitchen Issues"
-	} else if (type === 'bathroomIssues') {
-		return "Bathroom Issues"
-	} else if (type === "damagedDyingPlants") {
-		return "Damaged/Dying Plants"
-	} else if (type === 'conferenceRoomHardware') {
-		return "Conference Room Hardware Issues"
-	} else if (type === "webMobileIssues") {
-		return "Web/Mobile App Issues"
-	} else if (type === 'furnitureMovingRequest') {
-		return "Furniture Moving Request"
-	} else if (type === 'printingIssues') {
-		return "Printing Issues"
-	} else if (type === 'wifiIssues') {
-		return "Wifi Issues"
-	} else if (type === 'other') {
-		return "Other"
+	} else if (type === 'door') {
+		return "Door"
+	} else if (type === "heatingCooling") {
+		return "Heating/Cooling"
+	} else if (type === 'cleaning') {
+		return "Cleaning"
+	} else if (type === "supplies") {
+		return "Supplies"
 	} else {
-		return "No Name"
+		return "Service Request"
 	}
 }
 
@@ -337,6 +329,7 @@ exports.notifyUserofOfficeAnnouncement = function (snap, context, db, admin) {
 	var data = snap.data();
 	var announcementMessage = data.message || null;
 	var officeUIDs = data.officeUID || null;
+	let newValue = {};
 
 	if (officeUIDs === null) {
 		throw new functions.https.HttpsError('invalid-arguments', 'Need to provide officeUIDs to announcement.');
@@ -388,26 +381,6 @@ exports.notifyUserofOfficeAnnouncement = function (snap, context, db, admin) {
 								console.log('Successfully sent message:', response);
 								return newValue;
 							})
-							.then(data => {
-								console.log('starting adding notifications');
-								const dataDict = { 'announcementUID': context.params.announcementID };
-								return db.collection('userNotifications').doc(userUID).collection('notifications').add({
-									type: 'announcement',
-									readStatus: false,
-									data: dataDict,
-									title: data.notificationTitle,
-									body: data.notificationBody,
-									timestamp: new Date(new Date().toUTCString())
-								})
-									.then(docRef => {
-										console.log('did add notifications');
-										return db.collection('userNotifications').doc(userUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
-									})
-									.catch(error => {
-										console.log(error);
-										return
-									})
-							})
 							.catch((error) => {
 								console.error(error);
 								throw error;
@@ -415,6 +388,26 @@ exports.notifyUserofOfficeAnnouncement = function (snap, context, db, admin) {
 					});
 
 					return Promise.all(promises)
+						.then( () => {
+							console.log('starting adding notifications');
+							const dataDict = { 'announcementUID': context.params.announcementID };
+							return db.collection('userNotifications').doc(userUID).collection('notifications').add({
+								type: 'announcement',
+								readStatus: false,
+								data: dataDict,
+								title: newValue.notificationTitle,
+								body: newValue.notificationBody,
+								timestamp: new Date(new Date().toUTCString())
+							})
+								.then(docRef => {
+									console.log('did add notifications');
+									return db.collection('userNotifications').doc(userUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
+								})
+								.catch(error => {
+									console.log(error);
+									return
+								})
+						})
 						.catch(error => {
 							console.error(error);
 							throw error;
@@ -443,7 +436,7 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 					return docsData;
 				})
 				.then(usersData => {
-					return usersData.map(x => {
+					return usersData.map( x => {
 						const registrationTokens = x.registrationToken || null;
 						const userUID = x.uid || null;
 
@@ -482,26 +475,6 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 									console.log('Successfully sent message:', response);
 									return newValue;
 								})
-								.then(data => {
-									console.log('starting adding notifications');
-									const dataDict = { 'eventUID': context.params.eventID };
-									return db.collection('userNotifications').doc(userUID).collection('notifications').add({
-										type: 'newEvent',
-										readStatus: false,
-										data: dataDict,
-										title: data.notificationTitle,
-										body: data.notificationBody,
-										timestamp: new Date(new Date().toUTCString())
-									})
-										.then(docRef => {
-											console.log('did add notifications');
-											return db.collection('userNotifications').doc(userUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
-										})
-										.catch(error => {
-											console.log(error);
-											return
-										})
-								})
 								.catch((error) => {
 									console.error(error);
 									throw error;
@@ -509,6 +482,26 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 						});
 
 						return Promise.all(promises)
+							.then(() => {
+								console.log('starting adding notifications');
+								const dataDict = { 'eventUID': context.params.eventID };
+								return db.collection('userNotifications').doc(userUID).collection('notifications').add({
+									type: 'newEvent',
+									readStatus: false,
+									data: dataDict,
+									title: newValue.notificationTitle,
+									body: newValue.notificationBody,
+									timestamp: new Date(new Date().toUTCString())
+								})
+									.then(docRef => {
+										console.log('did add notifications');
+										return db.collection('userNotifications').doc(userUID).collection('notifications').doc(docRef.id).update({ 'uid': docRef.id });
+									})
+									.catch(error => {
+										console.log(error);
+										return
+									})
+							})
 							.catch(error => {
 								console.error(error);
 								throw error;
