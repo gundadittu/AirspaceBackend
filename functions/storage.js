@@ -18,14 +18,19 @@ exports.getProfileImageURL = function (userUID, admin) {
   };
 
   const file = bucket.file('userProfileImages/' + userUID + '.jpg');
-  return file.getSignedUrl(config)
+
+  return file.exists()
+  .then( (data) => {
+    const exists = data[0];
+    if (exists === false) { 
+      return null 
+    }
+    return file.getSignedUrl(config)
     .then(data => {
       const url = data[0];
       return url;
     })
-    .catch(error => {
-      throw error;
-    })
+  });
 }
 
 exports.getConferenceRoomImageURL = function (roomUID, admin) {

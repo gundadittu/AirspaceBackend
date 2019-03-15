@@ -561,8 +561,15 @@ exports.getUserInfo = functions.https.onCall((data, context) => {
 
 			return storageFunctions.getProfileImageURL(currUserUID, admin)
 				.then(url => {
+					if (url === null) { 
+						return data 
+					}
 					data.profileImageURL = url;
 					return data;
+				})
+				.catch( error => { 
+					console.error(error);
+					return data; 
 				})
 		})
 		.catch(error => {
