@@ -388,7 +388,7 @@ exports.notifyUserofOfficeAnnouncement = function (snap, context, db, admin) {
 					});
 
 					return Promise.all(promises)
-						.then( () => {
+						.then(() => {
 							console.log('starting adding notifications');
 							const dataDict = { 'announcementUID': context.params.announcementID };
 							return db.collection('userNotifications').doc(userUID).collection('notifications').add({
@@ -436,7 +436,7 @@ exports.notifyUserofEventCreation = function (snap, context, db, admin) {
 					return docsData;
 				})
 				.then(usersData => {
-					return usersData.map( x => {
+					return usersData.map(x => {
 						const registrationTokens = x.registrationToken || null;
 						const userUID = x.uid || null;
 
