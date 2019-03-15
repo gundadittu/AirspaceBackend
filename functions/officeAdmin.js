@@ -806,7 +806,7 @@ exports.getAllRegisteredGuestsForOfficeAdmin = function (data, context, db) {
             }
         })
         .then(() => {
-            return db.collection('registeredGuests').where('visitingOfficeUID', '==', selectedOfficeUID).orderBy('expectedVisitDate','asc').get()
+            return db.collection('registeredGuests').where('visitingOfficeUID', '==', selectedOfficeUID).orderBy('expectedVisitDate','desc').get()
                 .then((docSnapshots) => {
                     const docsData = docSnapshots.docs.map(x => x.data());
                     return docsData;
@@ -1134,7 +1134,7 @@ exports.getAllServiceRequestsForOfficeAdmin = function (data, context, db) {
             }
         })
         .then(() => {
-            return db.collection('serviceRequests').where('officeUID', '==', selectedOfficeUID).where('canceled', '==', false).orderBy('timestamp','asc').get()
+            return db.collection('serviceRequests').where('officeUID', '==', selectedOfficeUID).where('canceled', '==', false).orderBy('timestamp','desc').get()
                 .then((docSnapshots) => {
                     const docsData = docSnapshots.docs.map(x => x.data());
                     return docsData;

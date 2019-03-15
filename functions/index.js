@@ -316,7 +316,7 @@ exports.triggerRegGuestCreationEmail = functions.firestore.document('registeredG
 	const visitingOfficeUID = newValue.visitingOfficeUID || null;
 	var chicagoTime = newValue.expectedVisitDate.toDate().toLocaleString("en-US", { timeZone: "America/Chicago" });
 	const visitingDateTime = chicagoTime || null;
-	const checkInURL = webAppBaseURL + '/guestSelfCheckIn/' + regGuestUID;
+	const checkInURL = webAppBaseURL + '/general/guestSelfCheckIn/' + regGuestUID;
 	let visitingOfficeName = null;
 	let visitingOfficeAddress = null;
 	let hostName = null;
@@ -400,8 +400,8 @@ exports.triggerServiceRequestAutoRoutingEmail = functions.firestore.document('se
 	let requestHostName = null;
 	let requestHostEmail = null;
 	let requestImageURL = null;
-	let finishedURL = webAppBaseURL + '/updateServiceRequestStatus/' + requestUID + '/closed';
-	let inProgressURL = webAppBaseURL + '/updateServiceRequestStatus/' + requestUID + '/pending';
+	let finishedURL = webAppBaseURL + '/general/updateServiceRequestStatus/' + requestUID + '/closed';
+	let inProgressURL = webAppBaseURL + '/general/updateServiceRequestStatus/' + requestUID + '/pending';
 
 	return db.collection('serviceRequestsAutoRouting').doc(officeUID).get()
 		.then(docRef => {

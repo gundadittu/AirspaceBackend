@@ -110,7 +110,7 @@ exports.triggerUserCreationEmail = (userUID, db, admin) => {
         })
     })
     .then(() => {
-      const resetPasswordURL = webAppBaseURL+'/createPassword/'+userUID;
+      const resetPasswordURL = webAppBaseURL+'/general/createPassword/'+userUID;
       return sendUserCreationEmail({ userName: firstName, officeName: officeName, userEmail: email, resetPasswordURL: resetPasswordURL });
     })
 }

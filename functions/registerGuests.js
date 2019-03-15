@@ -153,6 +153,20 @@ exports.guestSelfCheckIn = function (data, context, db) {
     if (registeredGuestUID === null)  {
         throw new functions.https.HttpsError('invalid-argument', 'Need to provide a registeredGuestUID.');
     }
+	return db.collection('registeredGuests').doc(registeredGuestUID).get()
+	.then( docRef => { 
+		const data = docRef.data() || null; 
+		if (data === null) { 
+			throw new functions.https.HttpsError('not-found','Registered guest is not in our database.');
+		}
 
-	return db.collection('registeredGuests').doc(registeredGuestUID).update({arrived: true});
+		const arrivedStatus = data.arrived || null; 
+		if (arrivedStatus === true) { 
+			throw new functions.https.HttpsError('failed-precondition','This guest was already marked as arrived. Can not notify host again.');
+		}
+		return 
+	})
+	.then( () => { 
+		return db.collection('registeredGuests').doc(registeredGuestUID).update({arrived: true});
+	})
 }
