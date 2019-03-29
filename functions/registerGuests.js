@@ -7,7 +7,7 @@ exports.createRegisteredGuest = function(data, context, db, admin) {
 	const expectedVisitDate = new Date(data.expectedVisitDate) || null;
 	const visitingOfficeUID = data.visitingOfficeUID || null;
 
-	if (hostUID === null || guestName === null || expectedVisitDate === null || visitingOfficeUID === null) {
+	if (hostUID === null || guestName === null || expectedVisitDate === null || visitingOfficeUID === null || guestEmail === null) {
 		throw new functions.https.HttpsError('invalid-arguments','User must be signed in. Must provide guestName, guestEmail, expectedVisitDate, and visitingOfficeUID.');
 	}
 

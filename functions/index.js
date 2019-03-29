@@ -6,6 +6,11 @@ admin.initializeApp({
 	credential: admin.credential.cert(serviceAccount),
 	storageBucket: "airspace-management-app.appspot.com"
 });
+const Sentry = require('@sentry/node');
+Sentry.init({ dsn: 'https://8825e624e2594f1d8ca77d056c8b56dd@sentry.io/1395312' });
+
+
+var Airtable = require('airtable');
 
 const functions = require('firebase-functions');
 const conferenceRoomFunctions = require('./conferenceRooms');
@@ -27,216 +32,429 @@ var db = admin.firestore();
 const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
 
 exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
-	return reservationFunctions.getUsersReservationsForRange(data, context, db, admin);
+	return reservationFunctions.getUsersReservationsForRange(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.findAvailableConferenceRooms = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.findAvailableConferenceRooms(data, context, db, admin);
+	return conferenceRoomFunctions.findAvailableConferenceRooms(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getReservationsForConferenceRoom = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.getReservationsForConferenceRoom(data, context, db);
+	return conferenceRoomFunctions.getReservationsForConferenceRoom(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.createConferenceRoomReservation = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.createConferenceRoomReservation(data, context, db);
+	return conferenceRoomFunctions.createConferenceRoomReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllConferenceRoomsForUser = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.getAllConferenceRoomsForUser(data, context, db, admin);
+	return conferenceRoomFunctions.getAllConferenceRoomsForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllConferenceRoomReservationsForUser = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.getAllConferenceRoomReservationsForUser(data, context, db, admin);
+	return conferenceRoomFunctions.getAllConferenceRoomReservationsForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.cancelRoomReservation = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.cancelRoomReservation(data, context, db);
+	return conferenceRoomFunctions.cancelRoomReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.updateConferenceRoomReservation = functions.https.onCall((data, context) => {
-	return conferenceRoomFunctions.updateConferenceRoomReservation(data, context, db);
+	return conferenceRoomFunctions.updateConferenceRoomReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.createHotDeskReservation = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.createHotDeskReservation(data, context, db);
+	return hotDeskFunctions.createHotDeskReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.findAvailableHotDesks = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.findAvailableHotDesks(data, context, db, admin);
+	return hotDeskFunctions.findAvailableHotDesks(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getReservationsForHotDesk = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.getReservationsForHotDesk(data, context, db);
+	return hotDeskFunctions.getReservationsForHotDesk(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllHotDesksForUser = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.getAllHotDesksForUser(data, context, db, admin);
+	return hotDeskFunctions.getAllHotDesksForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllHotDeskReservationsForUser = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.getAllHotDeskReservationsForUser(data, context, db, admin);
+	return hotDeskFunctions.getAllHotDeskReservationsForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.updateHotDeskReservation = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.updateHotDeskReservation(data, context, db);
+	return hotDeskFunctions.updateHotDeskReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.cancelHotDeskReservation = functions.https.onCall((data, context) => {
-	return hotDeskFunctions.cancelHotDeskReservation(data, context, db);
+	return hotDeskFunctions.cancelHotDeskReservation(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getUsersNotifications = functions.https.onCall((data, context) => {
-	return notificationFunctions.getUsersNotifications(data, context, db);
+	return notificationFunctions.getUsersNotifications(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getUpcomingEventsForUser = functions.https.onCall((data, context) => {
-	return eventFunctions.getUpcomingEventsForUser(data, context, db, admin);
+	return eventFunctions.getUpcomingEventsForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.createRegisteredGuest = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.createRegisteredGuest(data, context, db, admin);
+	return registerGuestFunctions.createRegisteredGuest(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.updateUserFCMRegToken = functions.https.onCall((data, context) => {
-	return notificationFunctions.updateUserFCMRegToken(data, context, db, admin);
+	return notificationFunctions.updateUserFCMRegToken(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getUsersRegisteredGuests = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.getUsersRegisteredGuests(data, context, db);
+	return registerGuestFunctions.getUsersRegisteredGuests(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.cancelRegisteredGuest = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.cancelRegisteredGuest(data, context, db);
+	return registerGuestFunctions.cancelRegisteredGuest(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.createServiceRequest = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.createServiceRequest(data, context, db, admin);
+	return serviceRequestFunctions.createServiceRequest(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getUsersServiceRequests = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.getUsersServiceRequests(data, context, db);
+	return serviceRequestFunctions.getUsersServiceRequests(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.cancelServiceRequest = functions.https.onCall((data, context) => {
-	return serviceRequestFunctions.cancelServiceRequest(data, context, db);
+	return serviceRequestFunctions.cancelServiceRequest(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.notifyUserOfArrivedGuest = functions.firestore.document('registeredGuests/{registrationID}').onUpdate((change, context) => {
-	return notificationFunctions.notifyUserOfArrivedGuest(change, context, db, admin);
+	return notificationFunctions.notifyUserOfArrivedGuest(change, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.notifyUserofServiceRequestStatusChange = functions.firestore.document('serviceRequests/{serviceRequestID}').onUpdate((change, context) => {
-	return notificationFunctions.notifyUserofServiceRequestStatusChange(change, context, db, admin);
+	return notificationFunctions.notifyUserofServiceRequestStatusChange(change, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.notifyUserofEventCreation = functions.firestore.document('events/{eventID}').onCreate((snap, context) => {
-	return notificationFunctions.notifyUserofEventCreation(snap, context, db, admin);
+	return notificationFunctions.notifyUserofEventCreation(snap, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.notifyUserofOfficeAnnouncement = functions.firestore.document('officeAnnouncements/{announcementID}').onCreate((snap, context) => {
-	return notificationFunctions.notifyUserofOfficeAnnouncement(snap, context, db, admin);
+	return notificationFunctions.notifyUserofOfficeAnnouncement(snap, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getEmployeesForOffice = functions.https.onCall((data, context) => {
-	return officeFunctions.getEmployeesForOffice(data, context, db);
+	return officeFunctions.getEmployeesForOffice(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getSpaceInfoForUser = functions.https.onCall((data, context) => {
-	return officeFunctions.getSpaceInfoForUser(data, context, db, admin);
+	return officeFunctions.getSpaceInfoForUser(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.guestSelfCheckIn = functions.https.onCall((data, context) => {
-	return registerGuestFunctions.guestSelfCheckIn(data, context, db);
+	return registerGuestFunctions.guestSelfCheckIn(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 // *---- OFFICE ADMIN FUNCTIONS ---* 
 
 exports.getAllUsersForOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAllUsersForOffice(data, context, db);
+	return officeAdminFunctions.getAllUsersForOffice(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.addUserToOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.addUserToOffice(data, context, db, admin);
+	return officeAdminFunctions.addUserToOffice(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.removeUserFromOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.removeUserFromOffice(data, context, db, admin);
+	return officeAdminFunctions.removeUserFromOffice(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.editUserForOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.editUserForOffice(data, context, db, admin);
+	return officeAdminFunctions.editUserForOffice(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.getAllConferenceRoomsForOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAllConferenceRoomsForOffice(data, context, db, admin);
+	return officeAdminFunctions.getAllConferenceRoomsForOffice(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllHotDesksForOffice = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAllHotDesksForOffice(data, context, db);
+	return officeAdminFunctions.getAllHotDesksForOffice(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.addConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.addConferenceRoomForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.addConferenceRoomForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
+
 exports.addHotDeskForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.addHotDeskForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.addHotDeskForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.editConferenceRoomForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.editConferenceRoomForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.editConferenceRoomForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.editHotDeskForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.editHotDeskForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.editHotDeskForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.getAllRegisteredGuestsForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAllRegisteredGuestsForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.getAllRegisteredGuestsForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.getEventsForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getEventsForOfficeAdmin(data, context, db, admin);
+	return officeAdminFunctions.getEventsForOfficeAdmin(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.editEventsForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.editEventsForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.editEventsForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.createEventForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.createEventForOfficeAdmin(data, context, db, admin);
+	return officeAdminFunctions.createEventForOfficeAdmin(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getSpaceInfoForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getSpaceInfoForOfficeAdmin(data, context, db, admin);
+	return officeAdminFunctions.getSpaceInfoForOfficeAdmin(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 });
 
 exports.getAllServiceRequestsForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAllServiceRequestsForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.getAllServiceRequestsForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.updateServiceRequestStatusForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.updateServiceRequestStatusForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.updateServiceRequestStatusForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.getServiceRequestAutoRoutingForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getServiceRequestAutoRoutingForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.getServiceRequestAutoRoutingForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.updateServiceRequestAutoRoutingForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.updateServiceRequestAutoRoutingForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.updateServiceRequestAutoRoutingForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.postAnnouncementForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.postAnnouncementForOfficeAdmin(data, context, db, admin);
+	return officeAdminFunctions.postAnnouncementForOfficeAdmin(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.getAnnouncementsForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.getAnnouncementsForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.getAnnouncementsForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data, context) => {
-	return officeAdminFunctions.changeRegisteredGuestStatusForOfficeAdmin(data, context, db);
+	return officeAdminFunctions.changeRegisteredGuestStatusForOfficeAdmin(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
 })
 
 // *--------------*
@@ -506,12 +724,12 @@ exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
 					}
 				})
 				.catch(error => {
-					console.error(error);
+					Sentry.captureException(error);
 					throw error;
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -561,19 +779,19 @@ exports.getUserInfo = functions.https.onCall((data, context) => {
 
 			return storageFunctions.getProfileImageURL(currUserUID, admin)
 				.then(url => {
-					if (url === null) { 
-						return data 
+					if (url === null) {
+						return data
 					}
 					data.profileImageURL = url;
 					return data;
 				})
-				.catch( error => { 
-					console.error(error);
-					return data; 
+				.catch(error => {
+					Sentry.captureException(error);
+					return data;
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -594,7 +812,7 @@ exports.getUserType = functions.https.onCall((data, context) => {
 			}
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -626,7 +844,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 						return docRef.data();
 					})
 					.catch(error => {
-						console.error(error);
+						Sentry.captureException(error);
 						throw error;
 					})
 			}
@@ -648,7 +866,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 						return docRef.data();
 					})
 					.catch(error => {
-						console.error(error);
+						Sentry.captureException(error);
 						throw error;
 					})
 			}
@@ -660,7 +878,7 @@ exports.getUserProfile = functions.https.onCall((data, context) => {
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -683,6 +901,7 @@ exports.getAllUsers = functions.https.onCall((data, context) => {
 		};
 	}).catch(error => {
 		console.log("Error getting all users: ", error);
+		Sentry.captureException(error);
 		throw new functions.https.HttpsError('internal', 'Error fetching list of users.')
 	})
 });
@@ -750,11 +969,12 @@ exports.updateUserBioInfo = functions.https.onCall((data, context) => {
 					return
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw new functions.https.HttpsError('internal', "There was an issue updating user profile bio info: ", uid);
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 
@@ -787,7 +1007,7 @@ exports.triggerUserBioInfoUpdate = functions.firestore.document('users/{uid}').o
 			return
 		})
 		.catch((error) => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -805,6 +1025,7 @@ exports.deleteUser = functions.https.onCall((data, context) => {
 		})
 		.catch((error) => {
 			console.log("Error deleting user:", error);
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Error deleting user.")
 		});
 });
@@ -831,11 +1052,13 @@ exports.createBuilding = functions.https.onCall((data, context) => {
 			})
 			.catch((error) => {
 				console.log("Error adding building id to database: ", error);
+				Sentry.captureException(error);
 				throw new functions.https.HttpsError("internal", "Error adding new building ID into database.")
 			})
 	})
 		.catch((error) => {
 			console.log("Error adding building: ", error);
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Error adding new building data into database.")
 		})
 });
@@ -848,6 +1071,7 @@ exports.getAllBuildings = functions.https.onCall((data, context) => {
 			return { "buildings": docs }
 		})
 		.catch((error) => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to get all buildings: ", error);
 		})
 });
@@ -866,6 +1090,7 @@ exports.addLandlordToBuilding = functions.https.onCall((data, context) => {
 		})
 		.catch(error => {
 			console.log("Error setting landlord for building.");
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to add landlord for building in database: ", error);
 		})
 
@@ -901,6 +1126,7 @@ exports.removeLandlordFromBuilding = functions.https.onCall((data, context) => {
 		})
 		.catch(error => {
 			console.log("Error removing landlord for building.");
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to remove landlord for building in database: ", error);
 		})
 
@@ -911,6 +1137,7 @@ exports.removeLandlordFromBuilding = functions.https.onCall((data, context) => {
 		})
 		.catch(error => {
 			console.log("Error removing building under landlord in database.");
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to remove building under landlord in database.")
 		})
 
@@ -926,6 +1153,7 @@ exports.getAllLandlords = functions.https.onCall((data, context) => {
 			return landlordsArray;
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', 'Unable to access database: ', error);
 		})
 });
@@ -965,6 +1193,7 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 					return data
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw new functions.https.HttpsError('internal', "Unable to extract landlords for building from database: ", buildingUID);
 				})
 		})
@@ -989,10 +1218,12 @@ exports.getBuildingProfile = functions.https.onCall((data, context) => {
 					return data;
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw new functions.https.HttpsError('internal', "Unable to extract offices for building from database: ", buildingUID);
 				})
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', "Unable to extract building from database: ", buildingUID);
 		})
 });
@@ -1025,6 +1256,7 @@ exports.updateBuildingBioInfo = functions.https.onCall((data, context) => {
 			return
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', "There was an issue updating building profile bio info: ", uid);
 		})
 
@@ -1038,6 +1270,7 @@ exports.getAllCompanies = functions.https.onCall((data, context) => {
 			return { "companies": docs }
 		})
 		.catch((error) => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to get all companies: ", error);
 		})
 });
@@ -1064,6 +1297,7 @@ exports.createCompany = functions.https.onCall((data, context) => {
 				})
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', 'Unable to create new company in database.')
 		})
 });
@@ -1090,7 +1324,7 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 						return docRef.data();
 					})
 					.catch(error => {
-						console.error(error);
+						Sentry.captureException(error);
 						throw error;
 					})
 			}
@@ -1109,7 +1343,7 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 						return docRef.data();
 					})
 					.catch(error => {
-						console.error(error);
+						Sentry.captureException(error);
 						throw error;
 					})
 			}
@@ -1121,6 +1355,7 @@ exports.getCompanyProfile = functions.https.onCall((data, context) => {
 				})
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', 'Could not get company from database.', companyUID);
 		})
 })
@@ -1148,6 +1383,7 @@ exports.updateCompanyBioInfo = functions.https.onCall((data, context) => {
 			return
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', "There was an issue updating company profile bio info: ", companyUID);
 		})
 
@@ -1186,10 +1422,12 @@ exports.getAllOffices = functions.https.onCall((data, context) => {
 					return { "offices": offices };
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
 				})
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to get all offices: ", error);
 		})
 });
@@ -1235,6 +1473,7 @@ exports.createOffice = functions.https.onCall((data, context) => {
 					return id
 				})
 				.catch((error) => {
+					Sentry.captureException(error);
 					throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
 				})
 		})
@@ -1243,6 +1482,7 @@ exports.createOffice = functions.https.onCall((data, context) => {
 			return db.collection('buildings').doc(buildingUID).update({ 'offices': admin.firestore.FieldValue.arrayUnion(officeUID) });
 		})
 		.catch((error) => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError("internal", "Unable to create office: ", error);
 		})
 })
@@ -1315,11 +1555,12 @@ exports.getOfficeProfile = functions.https.onCall((data, context) => {
 					return docData;
 				})
 				.catch(error => {
-					console.error(error);
+					Sentry.captureException(error);
 					throw error;
 				})
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('internal', 'Could not get office from database.', officeUID);
 		})
 });
@@ -1358,7 +1599,7 @@ exports.addOfficeToCompany = functions.https.onCall((data, context) => {
 						return
 					})
 					.catch(error => {
-						console.log("Error adding office for company.");
+						Sentry.captureException(error);
 						throw new functions.https.HttpsError("internal", "Unable to add office to company in database: ", error);
 					})
 
@@ -1368,6 +1609,7 @@ exports.addOfficeToCompany = functions.https.onCall((data, context) => {
 			}
 		})
 		.catch(error => {
+			Sentry.captureException(error);
 			throw new functions.https.HttpsError('not-found', "Can't find office with uid: ", officeUID);
 		})
 
@@ -1454,7 +1696,7 @@ exports.addUserToCompany = functions.https.onCall((data, context) => {
 			return
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -1490,7 +1732,7 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 						return
 					})
 					.catch(error => {
-						console.error(error);
+						Sentry.captureException(error);
 						throw error;
 					})
 			} else {
@@ -1498,7 +1740,7 @@ exports.setOfficeBuilding = functions.https.onCall((data, context) => {
 			}
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
 });
@@ -1532,6 +1774,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 						}
 					})
 					.catch(error => {
+						Sentry.captureException(error);
 						throw error;
 					})
 			})
@@ -1541,6 +1784,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 					return officeProfiles;
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw error;
 				})
 		})
@@ -1556,6 +1800,7 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 						return x
 					})
 					.catch(error => {
+						Sentry.captureException(error);
 						throw error;
 					})
 			})
@@ -1565,13 +1810,60 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 					return newOfficeData;
 				})
 				.catch(error => {
+					Sentry.captureException(error);
 					throw error;
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			Sentry.captureException(error);
 			throw error;
 		})
+});
+
+exports.getStartedForm = functions.https.onCall((data, context) => {
+
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	const newServicesArray = data.newServices || null; 
+	let newServices = ""; 
+	if (newServicesArray !== null) { 
+		newServices = newServicesArray.join(', ');
+	}
+
+	let values = {
+		'Company Name': data.companyName || null,
+		'First Name': data.firstName || null,
+		'Last Name': data.lastName || null,
+		'Role in Company': data.companyRole || null,
+		'Email': data.email || null,
+		'Phone': data.phone || null,
+		'New Services': newServices || null,
+		'Company URL': data.companyURL || null,
+		'Street Address - 1': data.streetAddr1 || null,
+		'Street Address - 2': data.streetAddr2 || null,
+		'City': data.city || null,
+		'State': data.stateAddr || null,
+		'Zip Code': data.zipCode || null,
+		'Floor No.': data.floorNo || null,
+		'Suite No.': data.suiteNo || null,
+		'Square Feet': data.squareFT || null,
+		'No. of Employees': data.employeeNo || null,
+		'Move-in Date': data.moveDate || null,
+		'Building Contact Name': data.buildingContName || null,
+		'Building Contact Role': data.buildingContRole || null,
+		'Building Contact Email': data.buildingContEmail || null,
+		'Building Contact Phone': data.buildingContPhone || null
+	}
+	console.log(values);
+
+	base('Get Started Form').create(values, (err, record) => {
+		if (err) {
+			console.log(err);
+			throw err;
+		}
+		console.log('Success: '+record.getId());
+		return 
+	});
+
 });
 
 

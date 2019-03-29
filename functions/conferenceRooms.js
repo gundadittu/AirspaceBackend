@@ -11,6 +11,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 	const reservationTitle = data.reservationTitle || "Room Reservation";
 	const note = data.note || null;
 	var attendees = data.attendees || [];
+	var emailInvites = data.emailInvites || [];
 	const userUID = context.auth.uid || null;
 	const userEmail = context.auth.token.email || null;
 	const shouldCreateCalendarEvent = data.shouldCreateCalendarEvent || false;
@@ -108,6 +109,7 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 			endDate: endTime,
 			userUID: userUID,
 			attendees: attendees.map( x => x.uid ),
+			emailInvites: emailInvites,
 			canceled: false
 		})
 		.catch( error => {
@@ -149,7 +151,13 @@ exports.createConferenceRoomReservation = function(data, context, db) {
 			if (userEmail !== null) {
 				attendees.push({"email": userEmail});
 			}
-
+			
+			for (let key in emailInvites) { 
+				let email = emailInvites[key];
+				attendees.push({"email": email});
+			}
+			console.log(attendees);
+			
 			var location = ""
 			if (address !== null) {
 				location = address;

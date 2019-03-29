@@ -1,6 +1,9 @@
 const functions = require('firebase-functions');
 const emailHelperFunctions = require('./emailHelper');
 
+const Sentry = require('@sentry/node');
+Sentry.init({ dsn: 'https://8825e624e2594f1d8ca77d056c8b56dd@sentry.io/1395312' });
+
 exports.getUsersNotifications = function (data, context, db) {
 	const userUID = context.auth.uid || null;
 
