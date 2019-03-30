@@ -19,6 +19,7 @@
     "firebase-functions": "2.1.0",
     "google-apis": "^1.0.0",
     "googleapis": "^36.0.0",
+    "stripe": "^6.28.0",
     "unirest": "^0.5.1"
   },
   "devDependencies": {

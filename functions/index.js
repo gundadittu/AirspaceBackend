@@ -6,11 +6,11 @@ admin.initializeApp({
 	credential: admin.credential.cert(serviceAccount),
 	storageBucket: "airspace-management-app.appspot.com"
 });
+
 const Sentry = require('@sentry/node');
 Sentry.init({ dsn: 'https://8825e624e2594f1d8ca77d056c8b56dd@sentry.io/1395312' });
-
-
 var Airtable = require('airtable');
+const stripe = require('stripe')('sk_test_b3LNK5tagzapieztTpCNvoJ9');
 
 const functions = require('firebase-functions');
 const conferenceRoomFunctions = require('./conferenceRooms');
@@ -25,6 +25,8 @@ const officeAdminFunctions = require('./officeAdmin');
 const helperFunctions = require('./helpers');
 const emailHelperFunctions = require('./emailHelper');
 const storageFunctions = require('./storage');
+const servicePortalFunctions = require('./servicePortal');
+
 var db = admin.firestore();
 // const settings = { timestampsInSnapshots: true };
 // db.settings(settings);
@@ -456,6 +458,16 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 			throw error;
 		});
 })
+
+// *--- SERVICE PORTAL FUNCTIONS ----*
+
+exports.getAllInvoicesForOffice = functions.https.onCall((data, context) => {
+	return servicePortalFunctions.getAllInvoicesForOffice(data, context, db, stripe)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
+});
 
 // *--------------*
 
@@ -1823,9 +1835,9 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 exports.getStartedForm = functions.https.onCall((data, context) => {
 
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
-	const newServicesArray = data.newServices || null; 
-	let newServices = ""; 
-	if (newServicesArray !== null) { 
+	const newServicesArray = data.newServices || null;
+	let newServices = "";
+	if (newServicesArray !== null) {
 		newServices = newServicesArray.join(', ');
 	}
 
@@ -1860,10 +1872,268 @@ exports.getStartedForm = functions.https.onCall((data, context) => {
 			console.log(err);
 			throw err;
 		}
-		console.log('Success: '+record.getId());
-		return 
+		console.log('Success: ' + record.getId());
+		return
 	});
 
+});
+
+exports.getStartedFormNew = functions.https.onCall((data, context) => {
+
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+
+	const newServicesArray = data.newServices || null;
+	let newServices = "";
+	if (newServicesArray !== null) {
+		newServices = newServicesArray.join(', ');
+	}
+
+
+	let newUserUID = null;
+	let newOfficeUID = null;
+	let stripeID = null;
+	let newCompanyUID = null;
+	let newBuildingUID = null;
+
+	const createUser = () => {
+		let dict = {
+			firstName: data.firstName || null,
+			lastName: data.lastName || null,
+			email: data.email || null,
+			type: "regular",
+			password: data.password || null
+		}
+		return helperFunctions.createUser(dict, context, db, admin)
+			.then((uid) => {
+				newUserUID = uid;
+				return
+			})
+	}
+
+	const insertOfficeUID = () => {
+		if (newOfficeUID === null) {
+			return
+		}
+		return db.collection('offices').doc(newOfficeUID).update({ uid: newOfficeUID });
+	}
+
+	const createStripeCustomer = () => {
+		return stripe.customers.create({
+			description: "For company: " + (data.companyName || null) + ", For office: " + (newOfficeUID),
+			metadata: {
+				officeUID: newOfficeUID
+			}
+		}, (err, customer) => {
+			if (err) {
+				Sentry.captureException(err);
+				return null
+			}
+			const stripeIdentifier = customer.id;
+			stripeID = stripeIdentifier;
+			return stripeIdentifier;
+		});
+	}
+
+	const createOffice = () => {
+		const dict = {
+			capacity: data.employeeNo || null,
+			employees: admin.firestore.FieldValue.arrayUnion(newUserUID),
+			floor: data.floorNo || null,
+			// name: 
+			officeAdmin: admin.firestore.FieldValue.arrayUnion(newUserUID),
+			roomNo: data.suiteNo || null,
+		}
+
+		return db.collection('offices').add(dict)
+			.then((docRef) => {
+				const uid = docRef.id;
+				newOfficeUID = uid;
+				if (newOfficeUID === null) {
+					throw Error("There was an issue storing the newOfficeUID");
+				}
+				return uid
+			})
+			.then(() => createStripeCustomer())
+			.then(() => insertOfficeUID())
+	}
+
+	const insertCompanyUID = () => {
+		if (newCompanyUID === null) {
+			return
+		}
+		return db.collection('companies').doc(newCompanyUID).update({ uid: newCompanyUID });
+	}
+
+	const createCompany = () => {
+		const dict = {
+			employees: admin.firestore.FieldValue.arrayUnion(newUserUID),
+			name: data.companyName || null,
+			offices: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
+		}
+
+		return db.collection('companies').add(dict)
+			.then((docRef) => {
+				const uid = docRef.id;
+				newCompanyUID = uid;
+				if (newCompanyUID === null) {
+					throw Error("There was an issue storing the newCompanyUID");
+				}
+				return uid
+			})
+			.then(() => insertCompanyUID());
+	}
+
+	const insertBuildingUID = () => {
+		if (newBuildingUID === null) {
+			return
+		}
+		return db.collection('buildings').doc(newBuildingUID).update({ uid: newBuildingUID });
+	}
+
+	const createBuilding = () => {
+
+		let address = "";
+		address += (data.streetAddr1 || null);
+		address += (data.streetAddr2 !== null ? " " + data.streetAddr2 : "");
+		address += " " + (data.city || null);
+		address += ", " + (data.stateAddr || null);
+		address += " " + (data.zipCode || null);
+
+		const dict = {
+			address: address,
+			// name: data.companyName || null,
+			offices: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
+		}
+
+		return db.collection('buildings').add(dict)
+			.then((docRef) => {
+				const uid = docRef.id;
+				newBuildingUID = uid;
+				if (newBuildingUID === null) {
+					throw Error("There was an issue storing the newBuildingUID");
+				}
+				return uid;
+			})
+			.then(() => insertBuildingUID());
+	}
+
+	const updateUserInfo = () => {
+		let dict = {
+			offices: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
+			officeAdmin: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
+			companies: admin.firestore.FieldValue.arrayUnion(newCompanyUID)
+		}
+		if (newUserUID === null) {
+			throw Error("Could not update user info. newUserUID is null.");
+		}
+		return db.collection('users').doc(newUserUID).update(dict);
+	}
+
+	const updateOfficeInfo = () => {
+		if (newOfficeUID === null) {
+			throw Error("Could not update office info. newOfficeUID is null.");
+		}
+		return db.collection('offices').doc(newOfficeUID).update({ stripeID: stripeID, buildingUID: newBuildingUID });
+	}
+
+	const submitForm = (resolve, reject) => {
+
+		let submitValues = {
+			'Company Name': data.companyName || null,
+			'First Name': data.firstName || null,
+			'Last Name': data.lastName || null,
+			'Role in Company': data.companyRole || null,
+			'Email': data.email || null,
+			'Phone': data.phone || null,
+			'New Services': newServices || null,
+			'Other Services and Details': data.otherServicesDetails || null,
+			'Company URL': data.companyURL || null,
+			'Street Address - 1': data.streetAddr1 || null,
+			'Street Address - 2': data.streetAddr2 || null,
+			'City': data.city || null,
+			'State': data.stateAddr || null,
+			'Zip Code': data.zipCode || null,
+			'Floor No.': data.floorNo || null,
+			'Suite No.': data.suiteNo || null,
+			'Square Feet': data.squareFT || null,
+			'No. of Employees': data.employeeNo || null,
+			'Move-in Date': data.moveDate || null
+			// 'Building Contact Name': data.buildingContName || null,
+			// 'Building Contact Role': data.buildingContRole || null,
+			// 'Building Contact Email': data.buildingContEmail || null,
+			// 'Building Contact Phone': data.buildingContPhone || null
+		}
+
+		return base('Get Started Form').create(submitValues, (err, record) => {
+			if (err) {
+				reject(err);
+				Sentry.captureException(err);
+				return
+			}
+			resolve()
+		})
+	};
+
+	const createServicePlan = () => {
+		if (newOfficeUID === null) {
+			throw Error("Unable to create service plan. newOfficeUID is null.");
+		}
+
+		let values = {
+			'Office UID': newOfficeUID,
+			'Company Name': data.companyName || null,
+			'Status': "Pending"
+		}
+
+		return base('Service Plans').create(values, { typecast: true }, (err, record) => {
+			if (err) {
+				Sentry.captureException(err);
+				throw err;
+			}
+			return
+		});
+	};
+
+	const createOfficeProfile = () => {
+		const profileValues = {
+			'Office UID': newOfficeUID,
+			'Company Name': data.companyName || null,
+			'Street Address - 1': data.streetAddr1 || null,
+			'Street Address - 2': data.streetAddr2 || null,
+			'City': data.city || null,
+			'State': data.stateAddr || null,
+			'Zip Code': data.zipCode || null,
+			'Floor No.': data.floorNo || null,
+			'Suite No.': data.suiteNo || null,
+			'Square Feet': data.squareFT || null,
+			'No. of Employees': data.employeeNo || null,
+			'Move-in Date': data.moveDate || null
+		};
+
+		return base('Office Profile').create(profileValues, { typecast: true }, (err, record) => {
+			if (err) {
+				Sentry.captureException(err);
+				throw err;
+			}
+			return
+		});
+	}
+
+	return new Promise((resolve, reject) => {
+		submitForm(resolve, reject);
+	}).then(() => createUser())
+		.then(() => createOffice())
+		.then(() => createStripeCustomer())
+		.then(() => createCompany())
+		.then(() => createBuilding())
+		.then(() => updateUserInfo())
+		.then(() => updateOfficeInfo())
+		.then(() => createServicePlan())
+		.then(() => createOfficeProfile())
+		.catch(err => {
+			Sentry.captureException(err);
+			throw err;
+		});
 });
 
 
