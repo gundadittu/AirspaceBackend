@@ -469,6 +469,15 @@ exports.getAllInvoicesForOffice = functions.https.onCall((data, context) => {
 		});
 });
 
+exports.getServicePlanForOffice = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getServicePlanForOffice(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		})
+});
+
 // *--------------*
 
 exports.updateServiceRequestStatusFromEmailLink = functions.https.onCall((data, context) => {
@@ -1895,6 +1904,10 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 	let newCompanyUID = null;
 	let newBuildingUID = null;
 
+	let getStartedATID = null;
+	let officeProfileATID = null;
+	let servicePlanATID = null;
+
 	const createUser = () => {
 		let dict = {
 			firstName: data.firstName || null,
@@ -1939,7 +1952,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 			capacity: data.employeeNo || null,
 			employees: admin.firestore.FieldValue.arrayUnion(newUserUID),
 			floor: data.floorNo || null,
-			// name: 
+			// name: data.companyName // NEED TO GIVE OFFICE NAME
 			officeAdmin: admin.firestore.FieldValue.arrayUnion(newUserUID),
 			roomNo: data.suiteNo || null,
 		}
@@ -2001,7 +2014,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 
 		const dict = {
 			address: address,
-			// name: data.companyName || null,
+			// name: data.companyName || null, // NEED TO GIVE BUILDING A NAME 
 			offices: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
 		}
 
@@ -2070,13 +2083,17 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 				Sentry.captureException(err);
 				return
 			}
+			const recordID = record.getId();
+			getStartedATID = recordID;
 			resolve()
 		})
 	};
 
-	const createServicePlan = () => {
+	const createServicePlan = (resolve, reject) => {
 		if (newOfficeUID === null) {
-			throw Error("Unable to create service plan. newOfficeUID is null.");
+			let error = Error("Unable to create service plan. newOfficeUID is null.");
+			reject(error);
+			return
 		}
 
 		let values = {
@@ -2088,13 +2105,16 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		return base('Service Plans').create(values, { typecast: true }, (err, record) => {
 			if (err) {
 				Sentry.captureException(err);
-				throw err;
+				reject(err);
+				return
 			}
-			return
+			const recordID = record.getId();
+			servicePlanATID = recordID;
+			resolve()
 		});
 	};
 
-	const createOfficeProfile = () => {
+	const createOfficeProfile = (resolve, reject) => {
 		const profileValues = {
 			'Office UID': newOfficeUID,
 			'Company Name': data.companyName || null,
@@ -2113,9 +2133,23 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		return base('Office Profile').create(profileValues, { typecast: true }, (err, record) => {
 			if (err) {
 				Sentry.captureException(err);
-				throw err;
+				reject(err);
+				return
 			}
-			return
+			let recordID = record.getId();
+			officeProfileATID = recordID;
+			resolve();
+		});
+	}
+
+	const storeATID = () => {
+		if (newOfficeUID === null) {
+			throw Error("newOfficeUID is null. Can not store airtable IDs in database under office object.");
+		}
+		return db.collection('offices').doc(newOfficeUID).update({
+			getStartedATID: getStartedATID,
+			officeProfileATID: officeProfileATID,
+			servicePlanATID: servicePlanATID
 		});
 	}
 
@@ -2128,8 +2162,9 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		.then(() => createBuilding())
 		.then(() => updateUserInfo())
 		.then(() => updateOfficeInfo())
-		.then(() => createServicePlan())
-		.then(() => createOfficeProfile())
+		.then(() => new Promise((resolve, reject) => createServicePlan(resolve, reject)))
+		.then(() => new Promise((resolve, reject) => createOfficeProfile(resolve, reject)))
+		.then(() => storeATID())
 		.catch(err => {
 			Sentry.captureException(err);
 			throw err;
