@@ -461,6 +461,25 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 
 // *--- SERVICE PORTAL FUNCTIONS ----*
 
+exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getOfficeProfileForAdmin(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		})
+})
+
+
+exports.getExperienceManagerInfoForOffice = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getExperienceManagerInfoForOffice(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		})
+})
+
 exports.getAllInvoicesForOffice = functions.https.onCall((data, context) => {
 	return servicePortalFunctions.getAllInvoicesForOffice(data, context, db, stripe)
 		.catch(error => {
