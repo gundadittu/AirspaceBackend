@@ -463,22 +463,8 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 // *--- ALEXA ---*
 
 exports.handler = functions.https.onRequest((req, res) => {
-	console.log(8);
-	console.log(req.body);
-	console.log(req.body.event);
-	console.log(req.body.context);
-	res.status(200).send({});
-	// return alexaFunctions.handler(event, contextAlexa, db)
-	// 	.then((response) => {
-	// 		console.log(response);
-	// 		res.status(200).send(response);
-	// 		return
-	// 	})
-	// 	.catch(error => {
-	// 		Sentry.captureException(error);
-	// 		res.status(500).send(error);
-	// 		return
-	// 	});
+	console.log(9);
+
 })
 
 // *--- SERVICE PORTAL FUNCTIONS ----*
