@@ -26,6 +26,7 @@ const helperFunctions = require('./helpers');
 const emailHelperFunctions = require('./emailHelper');
 const storageFunctions = require('./storage');
 const servicePortalFunctions = require('./servicePortal');
+const alexaFunctions = require('./alexaFunctions');
 
 var db = admin.firestore();
 // const settings = { timestampsInSnapshots: true };
@@ -459,7 +460,44 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 		});
 })
 
+// *--- ALEXA ---*
+
+exports.handler = functions.https.onRequest((req, res) => {
+	console.log(8);
+	console.log(req.body);
+	console.log(req.body.event);
+	console.log(req.body.context);
+	res.status(200).send({});
+	// return alexaFunctions.handler(event, contextAlexa, db)
+	// 	.then((response) => {
+	// 		console.log(response);
+	// 		res.status(200).send(response);
+	// 		return
+	// 	})
+	// 	.catch(error => {
+	// 		Sentry.captureException(error);
+	// 		res.status(500).send(error);
+	// 		return
+	// 	});
+})
+
 // *--- SERVICE PORTAL FUNCTIONS ----*
+
+exports.getAlexaToken = functions.https.onCall((data, context) => {
+	return servicePortalFunctions.getAlexaToken(data, context, db, admin)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
+});
+
+exports.linkAlexa = functions.https.onCall((data, context) => {
+	return servicePortalFunctions.linkAlexa(data, context, db)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
+})
 
 exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
@@ -467,7 +505,7 @@ exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
 		.catch(error => {
 			Sentry.captureException(error);
 			throw error;
-		})
+		});
 })
 
 
