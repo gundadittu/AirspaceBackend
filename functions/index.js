@@ -462,12 +462,19 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 
 // *--- ALEXA ---*
 
-exports.handler = functions.https.onRequest((req, res) => {
-	console.log(9);
+// exports.handler = functions.https.onRequest((req, res) => {
+// 	console.log(14);
 
-})
-
-// *--- SERVICE PORTAL FUNCTIONS ----*
+// 	try { 
+// 		const body = req.body; 
+// 		const response = alexaFunctions.handler(body); 
+// 		res.status(200).send(response);
+// 	} catch(err) { 
+// 		console.error(err);
+// 		Sentry.captureException(err);
+// 		res.status(400).send(err);
+// 	}
+// })
 
 exports.getAlexaToken = functions.https.onCall((data, context) => {
 	return servicePortalFunctions.getAlexaToken(data, context, db, admin)
@@ -484,6 +491,8 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 			throw error;
 		});
 })
+
+// *--- SERVICE PORTAL FUNCTIONS ----*
 
 exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
@@ -2140,6 +2149,8 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		}
 
 		let values = {
+			'Office Name': data.companyName || null,
+			'Office': [ officeProfileATID ],
 			'Office UID': newOfficeUID,
 			'Company Name': data.companyName || null,
 			'Status': "Pending"
@@ -2159,6 +2170,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 
 	const createOfficeProfile = (resolve, reject) => {
 		const profileValues = {
+			'Office Name': data.companyName || null,
 			'Office UID': newOfficeUID,
 			'Company Name': data.companyName || null,
 			'Street Address - 1': data.streetAddr1 || null,
@@ -2205,8 +2217,8 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		.then(() => createBuilding())
 		.then(() => updateUserInfo())
 		.then(() => updateOfficeInfo())
-		.then(() => new Promise((resolve, reject) => createServicePlan(resolve, reject)))
 		.then(() => new Promise((resolve, reject) => createOfficeProfile(resolve, reject)))
+		.then(() => new Promise((resolve, reject) => createServicePlan(resolve, reject)))
 		.then(() => storeATID())
 		.catch(err => {
 			Sentry.captureException(err);
