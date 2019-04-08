@@ -21,10 +21,10 @@ const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
         })
 }
 
-exports.getAlexaToken = (data, context, db, admin) => {
-    const authCode = data.code || null;
-    const grantType = data.grant_type || null;
-    const refreshToken = data.refresh_token || null;
+exports.getAlexaToken = (body, response, db, admin) => {
+    const authCode = body.code || null;
+    const grantType = body.grant_type || null;
+    const refreshToken = body.refresh_token || null;
 
     let userUID = null;
 
@@ -123,6 +123,7 @@ exports.getAlexaToken = (data, context, db, admin) => {
 
     return getUserUID()
         .then(() => new Promise((res, rej) => handleGrantType(res, rej)))
+        .then((dict) => response.status(200).send(dict))
 }
 
 exports.linkAlexa = (data, context, db) => {

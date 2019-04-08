@@ -476,17 +476,21 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 // 	}
 // })
 
-exports.getAlexaToken = functions.https.onCall((data, context) => {
-	return servicePortalFunctions.getAlexaToken(data, context, db, admin)
+exports.getAlexaToken = functions.https.onRequest((req, res) => {
+  const body = req.body; 
+   servicePortalFunctions.getAlexaToken(body, res, db, admin)
 		.catch(error => {
+			console.error(error);
 			Sentry.captureException(error);
-			throw error;
+			res.status(500).send(error);
+			return 
 		});
 });
 
 exports.linkAlexa = functions.https.onCall((data, context) => {
 	return servicePortalFunctions.linkAlexa(data, context, db)
 		.catch(error => {
+			console.error(error);
 			Sentry.captureException(error);
 			throw error;
 		});
