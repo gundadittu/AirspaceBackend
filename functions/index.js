@@ -476,14 +476,24 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 // 	}
 // })
 
+exports.addRequestFromAlexa = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.addRequestFromAlexa(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+});
+
 exports.getAlexaToken = functions.https.onRequest((req, res) => {
-  const body = req.body; 
-   servicePortalFunctions.getAlexaToken(body, res, db, admin)
+	const body = req.body;
+	servicePortalFunctions.getAlexaToken(body, res, db, admin)
 		.catch(error => {
 			console.error(error);
 			Sentry.captureException(error);
 			res.status(500).send(error);
-			return 
+			return
 		});
 });
 
@@ -497,6 +507,82 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 })
 
 // *--- SERVICE PORTAL FUNCTIONS ----*
+
+// exports.getPendingPackages = functions.https.onCall((data, context) => {
+// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+// 	return servicePortalFunctions.getPendingPackages(data, context, db, base)
+// 		.catch(error => {
+// 			console.error(error);
+// 			Sentry.captureException(error);
+// 			throw error;
+// 		});
+// });
+
+exports.servicePlanPendingCount = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getServicePlanForOffice(data, context, db, base)
+		.then((data) => {
+			const pending = data.pending || null;
+			if (pending === null) {
+				return { count: 0 };
+			}
+			return { count: pending.length };
+		})
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		})
+})
+
+exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.acceptServicePlanOption(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
+exports.acceptServicePlanAddOn = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.acceptServicePlanAddOn(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
+exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.pendingServicePlanOption(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
+exports.pendingServicePlanAddOn = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.pendingServicePlanAddOn(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
+exports.addRequestFromPortal = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.addRequestFromPortal(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+});
 
 exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
@@ -1948,6 +2034,8 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 
 	const newServicesArray = data.newServices || null;
+	const officeName = (data.companyName || null) + " - " + (data.streetAddr1 || null);
+
 	let newServices = "";
 	if (newServicesArray !== null) {
 		newServices = newServicesArray.join(', ');
@@ -1989,6 +2077,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 	const createStripeCustomer = () => {
 		return stripe.customers.create({
 			description: "For company: " + (data.companyName || null) + ", For office: " + (newOfficeUID),
+			email: (data.email || null),
 			metadata: {
 				officeUID: newOfficeUID
 			}
@@ -2008,7 +2097,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 			capacity: data.employeeNo || null,
 			employees: admin.firestore.FieldValue.arrayUnion(newUserUID),
 			floor: data.floorNo || null,
-			// name: data.companyName // NEED TO GIVE OFFICE NAME
+			name: officeName,
 			officeAdmin: admin.firestore.FieldValue.arrayUnion(newUserUID),
 			roomNo: data.suiteNo || null,
 		}
@@ -2070,7 +2159,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 
 		const dict = {
 			address: address,
-			// name: data.companyName || null, // NEED TO GIVE BUILDING A NAME 
+			name: data.streetAddr1 || null,
 			offices: admin.firestore.FieldValue.arrayUnion(newOfficeUID),
 		}
 
@@ -2153,9 +2242,8 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		}
 
 		let values = {
-			'Office Name': data.companyName || null,
-			'Office': [ officeProfileATID ],
-			'Office UID': newOfficeUID,
+			'Office Name': officeName,
+			'Office': [officeProfileATID],
 			'Company Name': data.companyName || null,
 			'Status': "Pending"
 		}
@@ -2174,7 +2262,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 
 	const createOfficeProfile = (resolve, reject) => {
 		const profileValues = {
-			'Office Name': data.companyName || null,
+			'Office Name': officeName,
 			'Office UID': newOfficeUID,
 			'Company Name': data.companyName || null,
 			'Street Address - 1': data.streetAddr1 || null,
@@ -2230,4 +2318,28 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		});
 });
 
+exports.checkValidEmail = functions.https.onCall((data, context) => {
+	const emailAdd = data.email || null;
+
+	if (emailAdd === null) {
+		return { valid: false };
+	}
+
+	return admin.auth().getUserByEmail(emailAdd)
+		.then((userRecord) => {
+			const userUID = userRecord.uid || null;
+			if (userUID === null) {
+				// This will go to the catch clause below and create user 
+				return { valid: true }
+			} else {
+				return { valid: false }
+			}
+		})
+		.catch(error => {
+			if (error.code === 'auth/user-not-found') {
+				return { valid: true }
+			}
+			return { valid: false }
+		})
+})
 

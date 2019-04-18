@@ -1,6 +1,5 @@
 const functions = require('firebase-functions');
 
-
 const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
     return db.collection('users').doc(userUID).get()
         .then(docRef => {
@@ -19,6 +18,245 @@ const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
             resolve()
             return
         })
+}
+
+exports.acceptServicePlanOption = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const recordID = data.recordID || null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+    }
+
+    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const updateRecord = (res, rej) => {
+        airtable('Pend. Package Options').update(recordID, {
+            "Status": "Needs to be Added to Service Plan",
+        }, function (err, record) {
+            if (err) {
+                console.error(err);
+                rej(error);
+                return;
+            }
+            res();
+        });
+    }
+
+    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+}
+
+exports.acceptServicePlanAddOn = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const recordID = data.recordID || null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+    }
+
+    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const updateRecord = (res, rej) => {
+        airtable('Pend. Package Add Ons').update(recordID, {
+            "Status": "Needs to be Added to Service Plan",
+        }, function (err, record) {
+            if (err) {
+                console.error(err);
+                rej(error);
+                return;
+            }
+            res();
+        });
+    }
+
+    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+}
+
+exports.pendingServicePlanOption = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const recordID = data.recordID || null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+    }
+
+    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const updateRecord = (res, rej) => {
+        airtable('Pend. Package Options').update(recordID, {
+            "Status": "Pending",
+        }, function (err, record) {
+            if (err) {
+                console.error(err);
+                rej(error);
+                return;
+            }
+            res();
+        });
+    }
+
+    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+}
+
+exports.pendingServicePlanAddOn = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const recordID = data.recordID || null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+    }
+
+    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const updateRecord = (res, rej) => {
+        airtable('Pend. Package Add Ons').update(recordID, {
+            "Status": "Pending",
+        }, function (err, record) {
+            if (err) {
+                console.error(err);
+                rej(error);
+                return;
+            }
+            res();
+        });
+    }
+
+    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+}
+
+exports.addRequestFromPortal = (data, context, db, airtable) => {
+
+    const userUID = context.auth.uid || null;
+
+    const serviceType = data.serviceType || null;
+    const serviceDescription = data.serviceDescription || null;
+    const onlyInterestedValue = data.onlyInterested || null;
+    const onlyInterested = (onlyInterestedValue === true) ? "Interest" : "Request";
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    let officeAtid = null;
+
+    if ((userUID === null) || (serviceType === null) || (selectedOfficeUID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And issue + selectedOfficeUID must be provided.");
+    }
+
+    const getATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                const officeData = docRef.data() || null;
+                if (officeData === null) {
+                    throw Error("No data found for office.");
+                }
+                const atid = officeData.officeProfileATID || null;
+                if (atid === null) {
+                    throw Error("No atid found for this office.");
+                }
+                officeAtid = atid;
+                return atid
+            })
+    }
+
+    const addRequest = (res, rej) => {
+        airtable('Requested Services')
+            .create({
+                "Type": serviceType,
+                "Description": serviceDescription,
+                "Interest or Request": onlyInterested,
+                "Office": [
+                    officeAtid
+                ],
+                "Status": "Open"
+            }, function (err, record) {
+                if (err) {
+                    console.error(err);
+                    rej(err);
+                    return
+                }
+                res(record);
+                return
+            });
+    }
+
+    return getATID()
+        .then(() => new Promise((res, rej) => addRequest(res, rej)))
+}
+
+
+exports.addRequestFromAlexa = (data, context, db, airtable) => {
+
+    const userUID = context.auth.uid || null;
+    const issue = data.issue || null;
+    let selectedOfficeUID = null;
+    let officeAtid = null;
+
+    if ((userUID === null) || (issue === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And issue must be provided.");
+    }
+
+
+    const getOfficeUID = () => {
+        return db.collection('alexa-auth-codes').doc(userUID).get()
+            .then(docRef => {
+                const data = docRef.data() || null;
+                if (data === null) {
+                    throw Error("No such auth-code found for user.");
+                }
+                const officeUID = data.selectedOfficeUID || null;
+                if (officeUID === null) {
+                    console.log("13.5");
+                    throw Error("No officeUID found.");
+                }
+                selectedOfficeUID = officeUID;
+                return officeUID;
+            })
+    }
+
+    const getATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                const officeData = docRef.data() || null;
+                if (officeData === null) {
+                    throw Error("No data found for office.");
+                }
+                const atid = officeData.officeProfileATID || null;
+                if (atid === null) {
+                    throw Error("No atid found for this office.");
+                }
+                officeAtid = atid;
+                return atid
+            })
+    }
+
+    const addIssue = (res, rej) => {
+        airtable('Alexa Requests')
+            .create({
+                "Notes": issue,
+                "Office": [
+                    officeAtid
+                ],
+                "Status": "Open"
+            }, function (err, record) {
+                if (err) {
+                    console.error(err);
+                    rej(err);
+                    return
+                }
+                res(record);
+                return
+            });
+    }
+
+    return getOfficeUID()
+        .then(() => getATID())
+        .then(() => new Promise((res, rej) => addIssue(res, rej)))
 }
 
 exports.getAlexaToken = (body, response, db, admin) => {
@@ -317,6 +555,15 @@ exports.getServicePlanForOffice = (data, context, db, airtable) => {
             })
     }
 
+    let allPending = null;
+    const getPending = () => {
+        return getPendingPackages(selectedOfficeUID, db, airtable)
+            .then(pending => {
+                allPending = pending;
+                return
+            })
+    }
+
     const getServicePlan = (resolve, reject) => {
         if (servicePlanATID === null) {
             let error = Error("servicePlanATID is null. Can not get service plan from airtable.");
@@ -368,7 +615,8 @@ exports.getServicePlanForOffice = (data, context, db, airtable) => {
                 })
                 let dict = {
                     active: active,
-                    inactive: inactive
+                    inactive: inactive,
+                    pending: allPending
                 }
 
                 resolve(dict);
@@ -384,8 +632,183 @@ exports.getServicePlanForOffice = (data, context, db, airtable) => {
     }
 
     return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => getPending())
         .then(() => getServicePlanATID())
         .then(() => new Promise((res, rej) => getServicePlan(res, rej)))
+}
+
+function getPendingPackages(selectedOfficeUID, db, airtable) {
+    // const userUID = context.auth.uid || null;
+    let officeAtid = null;
+
+    if (selectedOfficeUID === null) {
+        throw new functions.https.HttpsError("invalid-argument", "SelectedOfficeUID must be provided.");
+    }
+
+    // if ((userUID === null) || (selectedOfficeUID === null)) {
+    //     throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And selectedOfficeUID must be provided.");
+    // }
+
+    // const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const getATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                const officeData = docRef.data() || null;
+                if (officeData === null) {
+                    throw Error("No data found for office.");
+                }
+                const atid = officeData.officeProfileATID || null;
+                if (atid === null) {
+                    throw Error("No atid found for this office.");
+                }
+                officeAtid = atid;
+                return atid
+            })
+    }
+
+    let allPendingPackages = [];
+    const getAllPendingPackages = (res, rej) => {
+        airtable('Pending Packages').select({
+            filterByFormula: "AND(OfficeATID = '" + officeAtid + "'" + "," + "Status = 'Active'" + ")"
+            // eslint-disable-next-line prefer-arrow-callback
+        }).eachPage(function page(records, fetchNextPage) {
+            // This function (`page`) will get called for each page of records.
+
+            records.forEach((record) => {
+                // console.log('Retrieved', record.get('Record ID'));
+                const fields = record.fields || null;
+                if (fields !== null) {
+                    allPendingPackages.push(fields);
+                }
+            });
+
+            // To fetch the next page of records, call `fetchNextPage`.
+            // If there are more records, `page` will get called again.
+            // If there are no more records, `done` will get called.
+
+            fetchNextPage();
+            // eslint-disable-next-line prefer-arrow-callback
+        }, function done(err) {
+            if (err) {
+                console.error(err);
+                rej(err);
+                return;
+            }
+            res(allPendingPackages);
+        });
+    }
+
+    const getAllPendingOptions = (res, rej) => {
+        if (allPendingPackages === null) {
+            rej(Error("No Pending Packages"));
+            return
+        }
+
+        const topPromises = allPendingPackages.filter((x) => {
+            const allOptionsIDs = x["Options"] || null;
+            if (allOptionsIDs === null) {
+                return false
+            }
+            return true
+        }).map(x => {
+            const allOptionsIDs = x["Options"];
+
+            let allOptions = [];
+            const promises = allOptionsIDs.map(y => {
+                return new Promise((res, rej) =>
+                    airtable('Pend. Package Options').find(y, (err, record) => {
+                        if (err) {
+                            console.error(err);
+                            res();
+                            return;
+                        }
+                        const fields = record.fields || null;
+                        if (fields !== null) {
+                            allOptions.push(fields);
+                        }
+                        res();
+                    }));
+            });
+
+            // eslint-disable-next-line consistent-return
+            return Promise.all(promises)
+                .then(() => {
+                    x["options"] = allOptions;
+                    return x
+                })
+        })
+
+        // eslint-disable-next-line consistent-return
+        return Promise.all(topPromises)
+            .then(packages => {
+                console.log("finished: " + packages);
+                res(packages);
+                return
+            })
+            .catch(error => {
+                rej(error);
+                return
+            })
+    }
+
+    const getAllPendingAddOns = (res, rej) => {
+        if (allPendingPackages === null) {
+            rej(Error("No Pending Packages"));
+            return
+        }
+
+        const topPromises = allPendingPackages.filter((x) => {
+            const allOptionsIDs = x["Add-ons"] || null;
+            if (allOptionsIDs === null) {
+                return false
+            }
+            return true
+        }).map(x => {
+            const allOptionsIDs = x["Add-ons"];
+
+            let allOptions = [];
+            const promises = allOptionsIDs.map(y => {
+                return new Promise((res, rej) =>
+                    airtable('Pend. Package Add Ons').find(y, (err, record) => {
+                        if (err) {
+                            console.error(err);
+                            res();
+                            return;
+                        }
+                        const fields = record.fields || null;
+                        if (fields !== null) {
+                            allOptions.push(fields);
+                        }
+                        res();
+                    }));
+            });
+
+            // eslint-disable-next-line consistent-return
+            return Promise.all(promises)
+                .then(() => {
+                    x["addOns"] = allOptions;
+                    return x
+                })
+        })
+
+        // eslint-disable-next-line consistent-return
+        return Promise.all(topPromises)
+            .then(packages => {
+                console.log("finished: " + packages);
+                res(packages);
+                return
+            })
+            .catch(error => {
+                rej(error);
+                return
+            })
+    }
+
+    return getATID()
+        .then(() => new Promise((res, rej) => getAllPendingPackages(res, rej)))
+        .then(() => new Promise((res, rej) => getAllPendingOptions(res, rej)))
+        .then(() => new Promise((res, rej) => getAllPendingAddOns(res, rej)))
 }
 
 exports.getAllInvoicesForOffice = (data, context, db, stripe) => {

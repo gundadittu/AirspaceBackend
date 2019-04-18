@@ -1387,3 +1387,4 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = function (data, context, db)
             return db.collection('registeredGuests').doc(registeredGuestUID).update({arrived: newArrivalStatus});
         })
 }
+
