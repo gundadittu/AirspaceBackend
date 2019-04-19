@@ -544,16 +544,6 @@ exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
 		});
 })
 
-exports.acceptServicePlanAddOn = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
-	return servicePortalFunctions.acceptServicePlanAddOn(data, context, db, base)
-		.catch(error => {
-			console.error(error);
-			Sentry.captureException(error);
-			throw error;
-		});
-})
-
 exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.pendingServicePlanOption(data, context, db, base)
@@ -564,15 +554,25 @@ exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
 		});
 })
 
-exports.pendingServicePlanAddOn = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
-	return servicePortalFunctions.pendingServicePlanAddOn(data, context, db, base)
-		.catch(error => {
-			console.error(error);
-			Sentry.captureException(error);
-			throw error;
-		});
-})
+// exports.acceptServicePlanAddOn = functions.https.onCall((data, context) => {
+// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+// 	return servicePortalFunctions.acceptServicePlanAddOn(data, context, db, base)
+// 		.catch(error => {
+// 			console.error(error);
+// 			Sentry.captureException(error);
+// 			throw error;
+// 		});
+// })
+
+// exports.pendingServicePlanAddOn = functions.https.onCall((data, context) => {
+// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+// 	return servicePortalFunctions.pendingServicePlanAddOn(data, context, db, base)
+// 		.catch(error => {
+// 			console.error(error);
+// 			Sentry.captureException(error);
+// 			throw error;
+// 		});
+// })
 
 exports.addRequestFromPortal = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
@@ -616,6 +616,7 @@ exports.getServicePlanForOffice = functions.https.onCall((data, context) => {
 	return servicePortalFunctions.getServicePlanForOffice(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
+			console.error(error);
 			throw error;
 		})
 });

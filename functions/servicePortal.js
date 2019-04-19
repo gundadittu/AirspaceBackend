@@ -32,7 +32,7 @@ exports.acceptServicePlanOption = (data, context, db, airtable) => {
     const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
     const updateRecord = (res, rej) => {
-        airtable('Pend. Package Options').update(recordID, {
+        airtable('Pending Service Package Options + Add-ons').update(recordID, {
             "Status": "Needs to be Added to Service Plan",
         }, function (err, record) {
             if (err) {
@@ -48,33 +48,33 @@ exports.acceptServicePlanOption = (data, context, db, airtable) => {
         .then(() => new Promise((res, rej) => updateRecord(res, rej)))
 }
 
-exports.acceptServicePlanAddOn = (data, context, db, airtable) => {
-    const userUID = context.auth.uid || null;
-    const selectedOfficeUID = data.selectedOfficeUID || null;
-    const recordID = data.recordID || null;
+// exports.acceptServicePlanAddOn = (data, context, db, airtable) => {
+//     const userUID = context.auth.uid || null;
+//     const selectedOfficeUID = data.selectedOfficeUID || null;
+//     const recordID = data.recordID || null;
 
-    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
-        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
-    }
+//     if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+//         throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+//     }
 
-    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+//     const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
-    const updateRecord = (res, rej) => {
-        airtable('Pend. Package Add Ons').update(recordID, {
-            "Status": "Needs to be Added to Service Plan",
-        }, function (err, record) {
-            if (err) {
-                console.error(err);
-                rej(error);
-                return;
-            }
-            res();
-        });
-    }
+//     const updateRecord = (res, rej) => {
+//         airtable('Pend. Package Add Ons').update(recordID, {
+//             "Status": "Needs to be Added to Service Plan",
+//         }, function (err, record) {
+//             if (err) {
+//                 console.error(err);
+//                 rej(error);
+//                 return;
+//             }
+//             res();
+//         });
+//     }
 
-    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
-        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
-}
+//     return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+//         .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+// }
 
 exports.pendingServicePlanOption = (data, context, db, airtable) => {
     const userUID = context.auth.uid || null;
@@ -88,7 +88,7 @@ exports.pendingServicePlanOption = (data, context, db, airtable) => {
     const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
     const updateRecord = (res, rej) => {
-        airtable('Pend. Package Options').update(recordID, {
+        airtable('Pending Service Package Options + Add-ons').update(recordID, {
             "Status": "Pending",
         }, function (err, record) {
             if (err) {
@@ -104,33 +104,33 @@ exports.pendingServicePlanOption = (data, context, db, airtable) => {
         .then(() => new Promise((res, rej) => updateRecord(res, rej)))
 }
 
-exports.pendingServicePlanAddOn = (data, context, db, airtable) => {
-    const userUID = context.auth.uid || null;
-    const selectedOfficeUID = data.selectedOfficeUID || null;
-    const recordID = data.recordID || null;
+// exports.pendingServicePlanAddOn = (data, context, db, airtable) => {
+//     const userUID = context.auth.uid || null;
+//     const selectedOfficeUID = data.selectedOfficeUID || null;
+//     const recordID = data.recordID || null;
 
-    if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
-        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
-    }
+//     if ((userUID === null) || (selectedOfficeUID === null) || (recordID === null)) {
+//         throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And recordID + selectedOfficeUID must be provided.");
+//     }
 
-    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+//     const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
-    const updateRecord = (res, rej) => {
-        airtable('Pend. Package Add Ons').update(recordID, {
-            "Status": "Pending",
-        }, function (err, record) {
-            if (err) {
-                console.error(err);
-                rej(error);
-                return;
-            }
-            res();
-        });
-    }
+//     const updateRecord = (res, rej) => {
+//         airtable('Pend. Package Add Ons').update(recordID, {
+//             "Status": "Pending",
+//         }, function (err, record) {
+//             if (err) {
+//                 console.error(err);
+//                 rej(error);
+//                 return;
+//             }
+//             res();
+//         });
+//     }
 
-    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
-        .then(() => new Promise((res, rej) => updateRecord(res, rej)))
-}
+//     return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+//         .then(() => new Promise((res, rej) => updateRecord(res, rej)))
+// }
 
 exports.addRequestFromPortal = (data, context, db, airtable) => {
 
@@ -638,18 +638,11 @@ exports.getServicePlanForOffice = (data, context, db, airtable) => {
 }
 
 function getPendingPackages(selectedOfficeUID, db, airtable) {
-    // const userUID = context.auth.uid || null;
     let officeAtid = null;
 
     if (selectedOfficeUID === null) {
         throw new functions.https.HttpsError("invalid-argument", "SelectedOfficeUID must be provided.");
     }
-
-    // if ((userUID === null) || (selectedOfficeUID === null)) {
-    //     throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And selectedOfficeUID must be provided.");
-    // }
-
-    // const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
     const getATID = () => {
         return db.collection('offices').doc(selectedOfficeUID).get()
@@ -669,7 +662,7 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
 
     let allPendingPackages = [];
     const getAllPendingPackages = (res, rej) => {
-        airtable('Pending Packages').select({
+        airtable('Pending Service Packages').select({
             filterByFormula: "AND(OfficeATID = '" + officeAtid + "'" + "," + "Status = 'Active'" + ")"
             // eslint-disable-next-line prefer-arrow-callback
         }).eachPage(function page(records, fetchNextPage) {
@@ -706,18 +699,19 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
         }
 
         const topPromises = allPendingPackages.filter((x) => {
-            const allOptionsIDs = x["Options"] || null;
+            const allOptionsIDs = x["Options + Add-ons"] || null;
             if (allOptionsIDs === null) {
                 return false
             }
             return true
         }).map(x => {
-            const allOptionsIDs = x["Options"];
+            const allOptionsIDs = x["Options + Add-ons"];
 
             let allOptions = [];
+            let allAddOns = [];
             const promises = allOptionsIDs.map(y => {
                 return new Promise((res, rej) =>
-                    airtable('Pend. Package Options').find(y, (err, record) => {
+                    airtable('Pending Service Package Options + Add-ons').find(y, (err, record) => {
                         if (err) {
                             console.error(err);
                             res();
@@ -725,7 +719,12 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
                         }
                         const fields = record.fields || null;
                         if (fields !== null) {
-                            allOptions.push(fields);
+                            const type = fields["Type"] || null;
+                            if (type === "Option") {
+                                allOptions.push(fields);
+                            } else if (type === "Add-on") {
+                                allAddOns.push(fields);
+                            }
                         }
                         res();
                     }));
@@ -735,6 +734,9 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
             return Promise.all(promises)
                 .then(() => {
                     x["options"] = allOptions;
+                    x["addOns"] = allAddOns;
+                    console.log("reached allOptions + allAddOns");
+                    console.log(x);
                     return x
                 })
         })
@@ -752,63 +754,63 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
             })
     }
 
-    const getAllPendingAddOns = (res, rej) => {
-        if (allPendingPackages === null) {
-            rej(Error("No Pending Packages"));
-            return
-        }
+    // const getAllPendingAddOns = (res, rej) => {
+    //     if (allPendingPackages === null) {
+    //         rej(Error("No Pending Packages"));
+    //         return
+    //     }
 
-        const topPromises = allPendingPackages.filter((x) => {
-            const allOptionsIDs = x["Add-ons"] || null;
-            if (allOptionsIDs === null) {
-                return false
-            }
-            return true
-        }).map(x => {
-            const allOptionsIDs = x["Add-ons"];
+    //     const topPromises = allPendingPackages.filter((x) => {
+    //         const allOptionsIDs = x["Add-ons"] || null;
+    //         if (allOptionsIDs === null) {
+    //             return false
+    //         }
+    //         return true
+    //     }).map(x => {
+    //         const allOptionsIDs = x["Add-ons"];
 
-            let allOptions = [];
-            const promises = allOptionsIDs.map(y => {
-                return new Promise((res, rej) =>
-                    airtable('Pend. Package Add Ons').find(y, (err, record) => {
-                        if (err) {
-                            console.error(err);
-                            res();
-                            return;
-                        }
-                        const fields = record.fields || null;
-                        if (fields !== null) {
-                            allOptions.push(fields);
-                        }
-                        res();
-                    }));
-            });
+    //         let allOptions = [];
+    //         const promises = allOptionsIDs.map(y => {
+    //             return new Promise((res, rej) =>
+    //                 airtable('Pend. Package Add Ons').find(y, (err, record) => {
+    //                     if (err) {
+    //                         console.error(err);
+    //                         res();
+    //                         return;
+    //                     }
+    //                     const fields = record.fields || null;
+    //                     if (fields !== null) {
+    //                         allOptions.push(fields);
+    //                     }
+    //                     res();
+    //                 }));
+    //         });
 
-            // eslint-disable-next-line consistent-return
-            return Promise.all(promises)
-                .then(() => {
-                    x["addOns"] = allOptions;
-                    return x
-                })
-        })
+    //         // eslint-disable-next-line consistent-return
+    //         return Promise.all(promises)
+    //             .then(() => {
+    //                 x["addOns"] = allOptions;
+    //                 return x
+    //             })
+    //     })
 
-        // eslint-disable-next-line consistent-return
-        return Promise.all(topPromises)
-            .then(packages => {
-                console.log("finished: " + packages);
-                res(packages);
-                return
-            })
-            .catch(error => {
-                rej(error);
-                return
-            })
-    }
+    //     // eslint-disable-next-line consistent-return
+    //     return Promise.all(topPromises)
+    //         .then(packages => {
+    //             console.log("finished: " + packages);
+    //             res(packages);
+    //             return
+    //         })
+    //         .catch(error => {
+    //             rej(error);
+    //             return
+    //         })
+    // }
 
     return getATID()
         .then(() => new Promise((res, rej) => getAllPendingPackages(res, rej)))
         .then(() => new Promise((res, rej) => getAllPendingOptions(res, rej)))
-        .then(() => new Promise((res, rej) => getAllPendingAddOns(res, rej)))
+    // .then(() => new Promise((res, rej) => getAllPendingAddOns(res, rej)))
 }
 
 exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
