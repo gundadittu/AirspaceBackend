@@ -538,6 +538,26 @@ exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
 		});
 })
 
+exports.confirmPendingPackage = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.confirmPendingPackage(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
+exports.rejectPendingPackage = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.rejectPendingPackage(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
 // exports.acceptServicePlanAddOn = functions.https.onCall((data, context) => {
 // 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 // 	return servicePortalFunctions.acceptServicePlanAddOn(data, context, db, base)
@@ -2096,7 +2116,6 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 				}
 				return uid
 			})
-			.then(() => createStripeCustomer())
 			.then(() => insertOfficeUID())
 	}
 
