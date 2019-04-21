@@ -733,6 +733,18 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
             // eslint-disable-next-line consistent-return
             return Promise.all(promises)
                 .then(() => {
+                    allOptions.sort((a, b) => {
+                        let first = new Date(a["Created At"]);
+                        let second = new Date(b["Created At"]);
+                        return first - second; 
+                    });
+
+                    allAddOns.sort((a, b) => {
+                        let first = new Date(a["Created At"]);
+                        let second = new Date(b["Created At"]);
+                        return first - second; 
+                    });
+
                     x["options"] = allOptions;
                     x["addOns"] = allAddOns;
                     console.log("reached allOptions + allAddOns");

@@ -10,7 +10,7 @@ admin.initializeApp({
 const Sentry = require('@sentry/node');
 Sentry.init({ dsn: 'https://8825e624e2594f1d8ca77d056c8b56dd@sentry.io/1395312' });
 var Airtable = require('airtable');
-const stripe = require('stripe')('sk_test_b3LNK5tagzapieztTpCNvoJ9');
+const stripe = require('stripe')('sk_live_xp58HHXNsSPDi6GPBrB2ozvT005TEJMfpl');
 
 const functions = require('firebase-functions');
 const conferenceRoomFunctions = require('./conferenceRooms');
@@ -517,22 +517,6 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 // 			throw error;
 // 		});
 // });
-
-exports.servicePlanPendingCount = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
-	return servicePortalFunctions.getServicePlanForOffice(data, context, db, base)
-		.then((data) => {
-			const pending = data.pending || null;
-			if (pending === null) {
-				return { count: 0 };
-			}
-			return { count: pending.length };
-		})
-		.catch(error => {
-			Sentry.captureException(error);
-			throw error;
-		})
-})
 
 exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
