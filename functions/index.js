@@ -2046,7 +2046,6 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		newServices = newServicesArray.join(', ');
 	}
 
-
 	let newUserUID = null;
 	let newOfficeUID = null;
 	let stripeID = null;
@@ -2304,9 +2303,9 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		});
 	}
 
-	return new Promise((resolve, reject) => {
-		submitForm(resolve, reject);
-	}).then(() => createUser())
+	return createUser()
+		.then(() => new Promise((resolve, reject) => submitForm(resolve, reject)))
+		.then(() => createUser())
 		.then(() => createOffice())
 		.then(() => createStripeCustomer())
 		.then(() => createCompany())
