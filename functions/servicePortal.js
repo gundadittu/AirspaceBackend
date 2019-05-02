@@ -320,8 +320,6 @@ exports.addRequestFromAlexa = (data, context, db, airtable) => {
 }
 
 exports.getAlexaToken = (body, response, db, admin) => {
-
-    console.log(body);
     const authCode = body.code || null;
     const grantType = body.grant_type || null;
     const refreshToken = body.refresh_token || null;
@@ -368,11 +366,11 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     throw Error("Unable to find associated user account.");
                 }
                 const firstDoc = docsData[0];
-                const refresh_token = firstDoc.refresh_token;
-                if (refresh_token === null) {
+                const currRefreshToken = firstDoc.refreshToken;
+                if (currRefreshToken === null) {
                     throw Error("Unable to find associated refresh token.");
                 }
-                if (refresh_token !== refreshToken) {
+                if (currRefreshToken !== refreshToken) {
                     throw Error("Invalid refresh token.");
                 }
                 const uid = firstDoc.userUID;
@@ -396,8 +394,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     expires_in: 60 * 60,
                     id_token: ""
                 }
-                console.log("return dict:");
-                console.log(dict);
+                
                 // first store refresh token in database 
                 return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: refresh_token })
                     .then(() => {
