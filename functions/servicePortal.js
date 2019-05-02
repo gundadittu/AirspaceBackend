@@ -252,7 +252,7 @@ exports.addRequestFromPortal = (data, context, db, airtable) => {
 
 exports.addRequestFromAlexa = (data, context, db, airtable) => {
 
-    const userUID = context.auth.uid || null;
+    const userUID = data.userUID || null;
     const issue = data.issue || null;
     let selectedOfficeUID = null;
     let officeAtid = null;
@@ -320,15 +320,13 @@ exports.addRequestFromAlexa = (data, context, db, airtable) => {
 }
 
 exports.getAlexaToken = (body, response, db, admin) => {
+
+    console.log(body);
     const authCode = body.code || null;
     const grantType = body.grant_type || null;
     const refreshToken = body.refresh_token || null;
 
     let userUID = null;
-
-    if ((authCode === null) || (grantType === null)) {
-        throw new functions.https.HttpsError("invalid-argument", "Must provide authCode and grantType.");
-    }
 
     const createRefreshToken = () => {
         return '_' + Math.random().toString(36).substr(2, 9);
@@ -362,7 +360,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
 
         return db
             .collection("alexa-auth-codes")
-            .where("authCode", "==", authCode)
+            .where("refreshToken", "==", refreshToken)
             .get()
             .then(docSnapshots => {
                 const docsData = docSnapshots.docs.map(x => x.data());
@@ -377,6 +375,11 @@ exports.getAlexaToken = (body, response, db, admin) => {
                 if (refresh_token !== refreshToken) {
                     throw Error("Invalid refresh token.");
                 }
+                const uid = firstDoc.userUID;
+                if (uid === null) {
+                    throw Error("Unable to find associated user account.");
+                }
+                userUID = uid;
                 return
             })
 
@@ -393,8 +396,14 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     expires_in: 60 * 60,
                     id_token: ""
                 }
-                res(dict);
-                return
+                console.log("return dict:");
+                console.log(dict);
+                // first store refresh token in database 
+                return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: refresh_token })
+                    .then(() => {
+                        res(dict);
+                        return
+                    })
             })
             .catch(error => {
                 rej(error);
@@ -403,15 +412,32 @@ exports.getAlexaToken = (body, response, db, admin) => {
 
     const handleGrantType = (res, rej) => {
         if (grantType === "authorization_code") {
-            createNewTokens(res, rej);
-        } else if (grantType === "refresh_token") {
-            checkRefreshToken()
+            if ((authCode === null) || (grantType === null)) {
+                throw new functions.https.HttpsError("invalid-argument", "Must provide authCode and grantType.");
+            }
+
+            getUserUID()
                 .then(() => {
                     createNewTokens(res, rej);
                     return
                 })
                 .catch(error => {
                     rej(error);
+                    return
+                })
+
+        } else if (grantType === "refresh_token") {
+            if (refreshToken === null) {
+                throw new functions.https.HttpsError("invalid-argument", "Must provide refreshToken.");
+            }
+            checkRefreshToken(refreshToken)
+                .then(() => {
+                    createNewTokens(res, rej);
+                    return
+                })
+                .catch(error => {
+                    rej(error);
+                    return
                 })
 
         } else {
@@ -419,9 +445,11 @@ exports.getAlexaToken = (body, response, db, admin) => {
         }
     }
 
-    return getUserUID()
-        .then(() => new Promise((res, rej) => handleGrantType(res, rej)))
-        .then((dict) => response.status(200).send(dict))
+    return new Promise((res, rej) => handleGrantType(res, rej))
+        .then((dict) => {
+            response.status(200).send(dict)
+            return
+        })
 }
 
 exports.linkAlexa = (data, context, db) => {
@@ -429,13 +457,16 @@ exports.linkAlexa = (data, context, db) => {
     const authCode = data.authCode || null;
     const userUID = context.auth.uid || null;
 
+    console.log(1.5);
+
     if ((selectedOfficeUID === null) || (userUID === null) || (authCode === null)) {
         throw new functions.https.HttpsError("invalid-argument", "Must provide selectedOfficeUID and userUID (be logged in) and authCode.");
     }
 
-    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+    // const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
     const storeAuthCode = () => {
+        console.log(2);
         return db.collection("alexa-auth-codes").doc(userUID).set({
             authCode: authCode,
             selectedOfficeUID: selectedOfficeUID,
@@ -443,8 +474,18 @@ exports.linkAlexa = (data, context, db) => {
         })
     }
 
-    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
-        .then(() => storeAuthCode())
+    return storeAuthCode()
+        .catch((error) => {
+            console.log(3);
+            console.error(error);
+        })
+
+    // new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+    //     .then(() => storeAuthCode())
+    //     .catch((error) => {
+    //         console.log(3);
+    //         console.error(error);
+    //     })
 }
 
 exports.getOfficeProfileForAdmin = (data, context, db, airtable) => {
@@ -807,7 +848,7 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
 
                     x["options"] = allOptions;
                     x["addOns"] = allAddOns;
-                
+
                     return x
                 })
         })
