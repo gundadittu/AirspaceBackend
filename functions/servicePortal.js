@@ -394,7 +394,10 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     expires_in: 60 * 60,
                     id_token: ""
                 }
-                
+
+                console.log("return dict");
+                console.log(dict);
+
                 // first store refresh token in database 
                 return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: refresh_token })
                     .then(() => {
@@ -446,6 +449,11 @@ exports.getAlexaToken = (body, response, db, admin) => {
         .then((dict) => {
             response.status(200).send(dict)
             return
+        })
+        .catch(error => {
+            console.error(error);
+            console.log(body);
+            throw error;
         })
 }
 
