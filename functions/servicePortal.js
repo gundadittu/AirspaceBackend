@@ -373,7 +373,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
                 if (currRefreshToken === null) {
                     throw Error("Unable to find associated refresh token.");
                 }
-                if (currRefreshToken !== refreshToken) {
+                if (currRefreshToken.includes(refreshToken) === false) {
                     throw Error("Invalid refresh token.");
                 }
                 const uid = firstDoc.userUID || null;
