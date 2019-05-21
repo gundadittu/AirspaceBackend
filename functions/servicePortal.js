@@ -1,3 +1,4 @@
+/* eslint-disable promise/no-nesting */
 const functions = require('firebase-functions');
 
 const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
@@ -320,11 +321,13 @@ exports.addRequestFromAlexa = (data, context, db, airtable) => {
 }
 
 exports.getAlexaToken = (body, response, db, admin) => {
+    console.log(body);
     const authCode = body.code || null;
     const grantType = body.grant_type || null;
     const refreshToken = body.refresh_token || null;
 
     let userUID = null;
+    let seconds = 60 * 60 * 5;
 
     const createRefreshToken = () => {
         return '_' + Math.random().toString(36).substr(2, 9);
@@ -358,7 +361,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
 
         return db
             .collection("alexa-auth-codes")
-            .where("refreshToken", "==", refreshToken)
+            .where("refreshToken", 'array-contains', refreshToken)
             .get()
             .then(docSnapshots => {
                 const docsData = docSnapshots.docs.map(x => x.data());
@@ -366,40 +369,53 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     throw Error("Unable to find associated user account.");
                 }
                 const firstDoc = docsData[0];
-                const currRefreshToken = firstDoc.refreshToken;
+                const currRefreshToken = firstDoc.refreshToken || null;
                 if (currRefreshToken === null) {
                     throw Error("Unable to find associated refresh token.");
                 }
                 if (currRefreshToken !== refreshToken) {
                     throw Error("Invalid refresh token.");
                 }
-                const uid = firstDoc.userUID;
+                const uid = firstDoc.userUID || null;
                 if (uid === null) {
                     throw Error("Unable to find associated user account.");
                 }
+
+                // const lastRefresh = firstDoc.lastRefresh || null;
+                // if (lastRefresh !== null) {
+                //     const lastRefreshDate = lastRefresh.toDate();
+                //     lastRefreshDate.setSeconds(lastRefreshDate.getSeconds() + seconds);
+
+                //     let current = new Date();
+                //     if (current < lastRefreshDate) {
+                //         throw Error("Token is still valid. No need to refresh.");
+                //     }
+                // }
+                console.log("userUID :"+uid);
+
                 userUID = uid;
                 return
             })
 
     }
 
-    const createNewTokens = (res, rej) => {
-        admin.auth().createCustomToken(userUID)
+    const createNewTokens = (res, rej, refreshToken) => {
+        return admin.auth().createCustomToken(userUID)
             .then((token) => {
-                let refresh_token = createRefreshToken();
+                // let lastRefresh = admin.firestore.FieldValue.serverTimestamp();
+
                 const dict = {
                     access_token: token,
-                    refresh_token: refresh_token,
+                    refresh_token: refreshToken,
                     token_type: "Bearer",
-                    expires_in: 60 * 60,
+                    expires_in: seconds,
                     id_token: ""
                 }
 
                 console.log("return dict");
                 console.log(dict);
 
-                // first store refresh token in database 
-                return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: refresh_token })
+                return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: admin.firestore.FieldValue.arrayUnion(refreshToken) })
                     .then(() => {
                         res(dict);
                         return
@@ -418,8 +434,8 @@ exports.getAlexaToken = (body, response, db, admin) => {
 
             getUserUID()
                 .then(() => {
-                    createNewTokens(res, rej);
-                    return
+                    let newRefreshToken = createRefreshToken();
+                    return createNewTokens(res, rej, newRefreshToken);
                 })
                 .catch(error => {
                     rej(error);
@@ -432,8 +448,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
             }
             checkRefreshToken(refreshToken)
                 .then(() => {
-                    createNewTokens(res, rej);
-                    return
+                    return createNewTokens(res, rej, refreshToken);
                 })
                 .catch(error => {
                     rej(error);
@@ -462,8 +477,6 @@ exports.linkAlexa = (data, context, db) => {
     const authCode = data.authCode || null;
     const userUID = context.auth.uid || null;
 
-    console.log(1.5);
-
     if ((selectedOfficeUID === null) || (userUID === null) || (authCode === null)) {
         throw new functions.https.HttpsError("invalid-argument", "Must provide selectedOfficeUID and userUID (be logged in) and authCode.");
     }
@@ -471,7 +484,6 @@ exports.linkAlexa = (data, context, db) => {
     // const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
 
     const storeAuthCode = () => {
-        console.log(2);
         return db.collection("alexa-auth-codes").doc(userUID).set({
             authCode: authCode,
             selectedOfficeUID: selectedOfficeUID,
@@ -481,7 +493,6 @@ exports.linkAlexa = (data, context, db) => {
 
     return storeAuthCode()
         .catch((error) => {
-            console.log(3);
             console.error(error);
         })
 
@@ -965,6 +976,15 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
             { customer: stripeID },
             (err, invoices) => {
                 if (err) {
+                    if (err.type === "StripeInvalidRequestError") {
+                        let dict = {
+                            outstanding: [],
+                            paid: [],
+                            all: []
+                        }
+                        resolve(dict);
+                        return
+                    }
                     reject(err);
                     return
                 }

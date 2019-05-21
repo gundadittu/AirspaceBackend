@@ -488,7 +488,7 @@ exports.addRequestFromAlexa = functions.https.onCall((data, context) => {
 
 exports.getAlexaToken = functions.https.onRequest((req, res) => {
 	const body = req.body;
-	servicePortalFunctions.getAlexaToken(body, res, db, admin)
+	return servicePortalFunctions.getAlexaToken(body, res, db, admin)
 		.catch(error => {
 			console.error(error);
 			Sentry.captureException(error);
