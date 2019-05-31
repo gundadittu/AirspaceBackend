@@ -321,13 +321,16 @@ exports.addRequestFromAlexa = (data, context, db, airtable) => {
 }
 
 exports.getAlexaToken = (body, response, db, admin) => {
+
+    console.log("body:");
     console.log(body);
+
     const authCode = body.code || null;
     const grantType = body.grant_type || null;
     const refreshToken = body.refresh_token || null;
 
     let userUID = null;
-    let seconds = 60 * 60 * 5;
+    let seconds = 60 * 6; // firebase access tokens last for an hour
 
     const createRefreshToken = () => {
         return '_' + Math.random().toString(36).substr(2, 9);
@@ -391,7 +394,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
                 //         throw Error("Token is still valid. No need to refresh.");
                 //     }
                 // }
-                console.log("userUID :"+uid);
+                console.log("userUID :" + uid);
 
                 userUID = uid;
                 return
@@ -399,7 +402,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
 
     }
 
-    const createNewTokens = (res, rej, refreshToken) => {
+    const createNewTokens = (res, rej, refreshToken, update) => {
         return admin.auth().createCustomToken(userUID)
             .then((token) => {
                 // let lastRefresh = admin.firestore.FieldValue.serverTimestamp();
@@ -412,14 +415,21 @@ exports.getAlexaToken = (body, response, db, admin) => {
                     id_token: ""
                 }
 
+
                 console.log("return dict");
                 console.log(dict);
 
-                return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: admin.firestore.FieldValue.arrayUnion(refreshToken) })
-                    .then(() => {
-                        res(dict);
-                        return
-                    })
+
+                if (update === true) {
+                    return db.collection('alexa-auth-codes').doc(userUID).update({ refreshToken: admin.firestore.FieldValue.arrayUnion(refreshToken) })
+                        .then(() => {
+                            res(dict);
+                            return
+                        })
+                } else {
+                    res(dict);
+                    return
+                }
             })
             .catch(error => {
                 rej(error);
@@ -435,7 +445,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
             getUserUID()
                 .then(() => {
                     let newRefreshToken = createRefreshToken();
-                    return createNewTokens(res, rej, newRefreshToken);
+                    return createNewTokens(res, rej, newRefreshToken, true);
                 })
                 .catch(error => {
                     rej(error);
@@ -448,7 +458,7 @@ exports.getAlexaToken = (body, response, db, admin) => {
             }
             checkRefreshToken(refreshToken)
                 .then(() => {
-                    return createNewTokens(res, rej, refreshToken);
+                    return createNewTokens(res, rej, refreshToken, false);
                 })
                 .catch(error => {
                     rej(error);
@@ -977,13 +987,14 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
             (err, invoices) => {
                 if (err) {
                     if (err.type === "StripeInvalidRequestError") {
-                        let dict = {
-                            outstanding: [],
-                            paid: [],
-                            all: []
-                        }
-                        resolve(dict);
-                        return
+                        // let dict = {
+                        //     outstanding: [],
+                        //     paid: [],
+                        //     all: []
+                        // }
+                        // resolve(dict);
+                        // return
+                        throw new functions.https.HttpsError('not-found', 'No invoices found for this office.');
                     }
                     reject(err);
                     return
@@ -1038,4 +1049,13 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
         validateUserPermission(resolve, reject);
     }).then(() => getStripeID())
         .then(() => new Promise((resolve, reject) => getInvoices(resolve, reject)))
+        .catch(error => {
+            let dict = {
+                outstanding: [],
+                paid: [],
+                all: []
+            }
+            resolve(dict);
+            return
+        })
 }
