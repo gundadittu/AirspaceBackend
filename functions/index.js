@@ -486,6 +486,16 @@ exports.addRequestFromAlexa = functions.https.onCall((data, context) => {
 		});
 });
 
+exports.submitSupportTicket = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.submitSupportTicket(data, context, db, base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
 exports.getAlexaToken = functions.https.onRequest((req, res) => {
 	const body = req.body;
 	return servicePortalFunctions.getAlexaToken(body, res, db, admin)

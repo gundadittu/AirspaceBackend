@@ -193,15 +193,69 @@ exports.pendingServicePlanOption = (data, context, db, airtable) => {
 //         .then(() => new Promise((res, rej) => updateRecord(res, rej)))
 // }
 
+exports.submitSupportTicket = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const details = data.details || null;
+
+    let officeAtid = null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (details === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And details + selectedOfficeUID must be provided.");
+    }
+
+    const getATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                const officeData = docRef.data() || null;
+                if (officeData === null) {
+                    throw Error("No data found for office.");
+                }
+                const atid = officeData.officeProfileATID || null;
+                if (atid === null) {
+                    throw Error("No atid found for this office.");
+                }
+                officeAtid = atid;
+                return atid
+            })
+    }
+
+    const submitTicket = (res, rej) => {
+        airtable('Support Tickets')
+            .create({
+                "Status": "Open",
+                "Details": details,
+                "Office": [
+                    officeAtid
+                ]
+            }, function (err, record) {
+                if (err) {
+                    console.error(err);
+                    rej(err);
+                    return
+                }
+                res(record);
+                return
+            });
+    }
+
+    return getATID()
+        .then(() => new Promise((res, rej) => submitTicket(res, rej)))
+}
+
 exports.addRequestFromPortal = (data, context, db, airtable) => {
 
     const userUID = context.auth.uid || null;
 
     const serviceType = data.serviceType || null;
-    const serviceDescription = data.serviceDescription || null;
+    const serviceDescriptionRaw = data.serviceDescription || [];
     const onlyInterestedValue = data.onlyInterested || null;
     const onlyInterested = (onlyInterestedValue === true) ? "Interest" : "Request";
     const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    const serviceDescription = ((serviceDescriptionRaw.map(x => {
+        return x.question + ": " + x.response
+    }))).join(" || ");
 
     let officeAtid = null;
 
@@ -229,7 +283,7 @@ exports.addRequestFromPortal = (data, context, db, airtable) => {
         airtable('Requested Services')
             .create({
                 "Type": serviceType,
-                "Description": serviceDescription,
+                "Details": serviceDescription,
                 "Interest or Request": onlyInterested,
                 "Office": [
                     officeAtid
@@ -994,7 +1048,8 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
                         // }
                         // resolve(dict);
                         // return
-                        throw new functions.https.HttpsError('not-found', 'No invoices found for this office.');
+                        // throw new functions.https.HttpsError('not-found', 'No invoices found for this office.');
+                        throw err;
                     }
                     reject(err);
                     return
