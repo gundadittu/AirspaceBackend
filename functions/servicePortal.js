@@ -255,7 +255,7 @@ exports.addRequestFromPortal = (data, context, db, airtable) => {
 
     const serviceDescription = ((serviceDescriptionRaw.map(x => {
         return x.question + ": " + x.response
-    }))).join(" || ");
+    }))).join(" |----------| ");
 
     let officeAtid = null;
 
