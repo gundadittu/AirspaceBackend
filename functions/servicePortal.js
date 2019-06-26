@@ -1115,17 +1115,6 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
             { customer: stripeID },
             (err, invoices) => {
                 if (err) {
-                    if (err.type === "StripeInvalidRequestError") {
-                        // let dict = {
-                        //     outstanding: [],
-                        //     paid: [],
-                        //     all: []
-                        // }
-                        // resolve(dict);
-                        // return
-                        // throw new functions.https.HttpsError('not-found', 'No invoices found for this office.');
-                        throw err;
-                    }
                     reject(err);
                     return
                 }
@@ -1168,7 +1157,7 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
                     paid: paid,
                     all: all
                 }
-                // console.log(dict);
+
                 resolve(dict);
             }
         );
@@ -1179,13 +1168,14 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
         validateUserPermission(resolve, reject);
     }).then(() => getStripeID())
         .then(() => new Promise((resolve, reject) => getInvoices(resolve, reject)))
-        .catch(error => {
+        .catch( error => {
             let dict = {
                 outstanding: [],
                 paid: [],
                 all: []
             }
-            resolve(dict);
-            return
+            console.log("Unable to get all invoices for selectedOfficeUID ("+selectedOfficeUID+") and stripeID ("+stripeID+")");
+            console.error(error);
+            return dict 
         })
 }
