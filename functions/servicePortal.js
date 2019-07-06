@@ -175,59 +175,73 @@ exports.getOfficeReport = (data, context, db, airtable) => {
 
         let newOfficeReport = {};
 
-        newOfficeReport["Next Visit"] = officeReport["Next Visit"] || "";
-
-        const outIssuesString = officeReport["Outstanding Issues"] || "";
-        const outIssues = outIssuesString.split(",");
-        newOfficeReport["Outstanding Issues"] = outIssues;
-
-        const spendingDataString = officeReport["Spending Data"] || "";
-        const spendingDataArray = spendingDataString.split(",");
-        const spendingDataFilterArray = spendingDataArray.filter(x => {
-            const split = x.split(":");
-            if (split.length >= 2) {
-                return true
-            }
-            return false
-        })
-        const spendingData = spendingDataFilterArray.map(x => {
-            const split = x.split(":");
-            const name = split[0] || "";
-            const valueString = split[1] || "0";
-            const value = Number(valueString);
-            // let dict = {}
-            // dict["name"] = name;
-            // dict["value"] = value; 
-            // return dict
-            let array = [name, value]; 
-            return array 
-        })
-        newOfficeReport["Spending Data"] = spendingData;
-
-        const funFactsString = officeReport["Fun Facts"] || "";
-        const funFacts = funFactsString.split(",");
-        newOfficeReport["Fun Facts"] = funFacts;
-
-        const expMan = officeReport["Experience Manager"] || [];
-
-        if (expMan.length === 0) {
-            res(newOfficeReport);
-            return
-        } else {
-            const expManID = expMan[0];
-            airtable('Experience Manager').find(expManID, (err, record) => {
-                if (err) {
-                    rej(err);
-                    return;
-                }
-                let fields = record.fields || null;
-                const photoDict = fields["Photo"][0] || {};
-                const imageURL = photoDict.thumbnails.large.url;
-
-                newOfficeReport["Image URL"] = imageURL;
-                res(newOfficeReport);
-            });
+        const nextVisitString = officeReport["Next Visit"] || null; 
+        if (nextVisitString !== null) { 
+            newOfficeReport["Next Visit"] = officeReport["Next Visit"];
         }
+
+        const outIssuesString = officeReport["Outstanding Issues"] || null;
+        if (outIssuesString !== null) { 
+            const outIssues = outIssuesString.split(",");
+            newOfficeReport["Outstanding Issues"] = outIssues;
+        }
+      
+
+        const spendingDataString = officeReport["Spending Data"] || null;
+        if (spendingDataString !== null) {
+            const spendingDataArray = spendingDataString.split(",");
+            const spendingDataFilterArray = spendingDataArray.filter(x => {
+                const split = x.split(":");
+                if (split.length >= 2) {
+                    return true
+                }
+                return false
+            })
+            const spendingData = spendingDataFilterArray.map(x => {
+                const split = x.split(":");
+                const name = split[0] || "";
+                const valueString = split[1] || "0";
+                const value = Number(valueString);
+                // let dict = {}
+                // dict["name"] = name;
+                // dict["value"] = value; 
+                // return dict
+                let array = [name, value];
+                return array
+            })
+            newOfficeReport["Spending Data"] = spendingData;
+        }
+
+        const funFactsString = officeReport["Fun Facts"] || null;
+        if (funFactsString !== null) {
+            const funFacts = funFactsString.split(",");
+            newOfficeReport["Fun Facts"] = funFacts;
+        }
+
+        // const expMan = officeReport["Experience Manager"] || [];
+
+        if ((nextVisitString === null) && (outIssuesString === null) && (spendingDataString === null) && (funFactsString === null)) { 
+            newOfficeReport = null; 
+        }
+
+        res(newOfficeReport);
+        
+        // return
+        // } else {
+        //     const expManID = expMan[0];
+        //     airtable('Experience Manager').find(expManID, (err, record) => {
+        //         if (err) {
+        //             rej(err);
+        //             return;
+        //         }
+        //         let fields = record.fields || null;
+        //         const photoDict = fields["Photo"][0] || {};
+        //         const imageURL = photoDict.thumbnails.large.url;
+
+        //         newOfficeReport["Image URL"] = imageURL;
+        //         res(newOfficeReport);
+        //     });
+        // }
     }
 
     return getOfficeProfileATID()
