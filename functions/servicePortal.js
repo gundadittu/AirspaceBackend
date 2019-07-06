@@ -23,6 +23,220 @@ const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
         })
 }
 
+// add security permissions 
+exports.getBuildingOfficeReport = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const selectedBuildingUID = data.selectedBuildingUID || null;
+
+    let officeProfileATID = null;
+    let officeReportATID = null;
+
+    if ((userUID === null) || (selectedOfficeUID === null) || (selectedBuildingUID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And selectedBuildingUID + selectedOfficeUID must be provided.");
+    }
+
+    const getOfficeProfileATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                if (docRef.exists) {
+                    const data = docRef.data() || null;
+                    if (data === null) {
+                        throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                    }
+                    officeProfileATID = data.officeProfileATID || null;
+                    if (officeProfileATID === null) {
+                        // throw new functions.https.HttpsError('not-found', 'officeProfileATID for selectedOfficeUID not found.');
+                        console.log("officeProfileATID for selectedOfficeUID not found.");
+                    }
+                    return
+                } else {
+                    throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                }
+            })
+    }
+
+    const getReportATID = (res, rej) => {
+        if (officeProfileATID === null) {
+            res({});
+            return
+        }
+
+        airtable('Office Profile').find(officeProfileATID, (err, record) => {
+            if (err) {
+                rej(err);
+                return;
+            }
+            const fields = record.fields || null;
+            officeReportATID = fields["Office Reports"] || null;
+            res();
+        });
+
+    }
+
+    const getReport = (res, rej) => {
+        if (officeReportATID === null) {
+            res({});
+            return
+        }
+
+        airtable('Office Reports').find(officeReportATID, (err, record) => {
+            if (err) {
+                rej(err);
+                return;
+            }
+            let fields = record.fields || null;
+            fields.uid = selectedOfficeUID;
+            console.log(fields);
+            res(fields);
+        });
+    }
+
+    return getOfficeProfileATID()
+        .then(() => new Promise((res, rej) => getReportATID(res, rej)))
+        .then(() => new Promise((res, rej) => getReport(res, rej)))
+
+}
+
+// add security permissions 
+exports.getOfficeReport = (data, context, db, airtable) => {
+    const userUID = context.auth.uid || null;
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+
+    let officeProfileATID = null;
+    let officeReportATID = null;
+    let officeReport = null;
+
+    if ((userUID === null) || (selectedOfficeUID === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "User must be logged in. And selectedOfficeUID must be provided.");
+    }
+
+    const getOfficeProfileATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                if (docRef.exists) {
+                    const data = docRef.data() || null;
+                    if (data === null) {
+                        throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                    }
+                    officeProfileATID = data.officeProfileATID || null;
+                    if (officeProfileATID === null) {
+                        // throw new functions.https.HttpsError('not-found', 'officeProfileATID for selectedOfficeUID not found.');
+                        console.log("officeProfileATID for selectedOfficeUID not found.");
+                    }
+                    return
+                } else {
+                    throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                }
+            })
+    }
+
+    const getReportATID = (res, rej) => {
+        if (officeProfileATID === null) {
+            res({});
+            return
+        }
+
+        airtable('Office Profile').find(officeProfileATID, (err, record) => {
+            if (err) {
+                rej(err);
+                return;
+            }
+            const fields = record.fields || null;
+            officeReportATID = fields["Office Reports"] || null;
+            res();
+        });
+
+    }
+
+    const getReport = (res, rej) => {
+        if (officeReportATID === null) {
+            res({});
+            return
+        }
+
+        airtable('Office Reports').find(officeReportATID, (err, record) => {
+            if (err) {
+                rej(err);
+                return;
+            }
+            let fields = record.fields || null;
+            fields.uid = selectedOfficeUID;
+            officeReport = fields;
+            res();
+        });
+    }
+
+    const formatReport = (res, rej) => {
+        if (officeReport === null) {
+            res({});
+            return
+        }
+
+        let newOfficeReport = {};
+
+        newOfficeReport["Next Visit"] = officeReport["Next Visit"] || "";
+
+        const outIssuesString = officeReport["Outstanding Issues"] || "";
+        const outIssues = outIssuesString.split(",");
+        newOfficeReport["Outstanding Issues"] = outIssues;
+
+        const spendingDataString = officeReport["Spending Data"] || "";
+        const spendingDataArray = spendingDataString.split(",");
+        const spendingDataFilterArray = spendingDataArray.filter(x => {
+            const split = x.split(":");
+            if (split.length >= 2) {
+                return true
+            }
+            return false
+        })
+        const spendingData = spendingDataFilterArray.map(x => {
+            const split = x.split(":");
+            const name = split[0] || "";
+            const valueString = split[1] || "0";
+            const value = Number(valueString);
+            // let dict = {}
+            // dict["name"] = name;
+            // dict["value"] = value; 
+            // return dict
+            let array = [name, value]; 
+            return array 
+        })
+        newOfficeReport["Spending Data"] = spendingData;
+
+        const funFactsString = officeReport["Fun Facts"] || "";
+        const funFacts = funFactsString.split(",");
+        newOfficeReport["Fun Facts"] = funFacts;
+
+        const expMan = officeReport["Experience Manager"] || [];
+
+        if (expMan.length === 0) {
+            res(newOfficeReport);
+            return
+        } else {
+            const expManID = expMan[0];
+            airtable('Experience Manager').find(expManID, (err, record) => {
+                if (err) {
+                    rej(err);
+                    return;
+                }
+                let fields = record.fields || null;
+                const photoDict = fields["Photo"][0] || {};
+                const imageURL = photoDict.thumbnails.large.url;
+
+                newOfficeReport["Image URL"] = imageURL;
+                res(newOfficeReport);
+            });
+        }
+    }
+
+    return getOfficeProfileATID()
+        .then(() => new Promise((res, rej) => getReportATID(res, rej)))
+        .then(() => new Promise((res, rej) => getReport(res, rej)))
+        .then(() => new Promise((res, rej) => formatReport(res, rej)))
+
+}
+
 
 exports.confirmPendingPackage = (data, context, db, airtable) => {
     const userUID = context.auth.uid || null;
@@ -1168,14 +1382,14 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
         validateUserPermission(resolve, reject);
     }).then(() => getStripeID())
         .then(() => new Promise((resolve, reject) => getInvoices(resolve, reject)))
-        .catch( error => {
+        .catch(error => {
             let dict = {
                 outstanding: [],
                 paid: [],
                 all: []
             }
-            console.log("Unable to get all invoices for selectedOfficeUID ("+selectedOfficeUID+") and stripeID ("+stripeID+")");
+            console.log("Unable to get all invoices for selectedOfficeUID (" + selectedOfficeUID + ") and stripeID (" + stripeID + ")");
             console.error(error);
-            return dict 
+            return dict
         })
 }

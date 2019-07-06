@@ -643,6 +643,30 @@ exports.getServicePlanForOffice = functions.https.onCall((data, context) => {
 		})
 });
 
+exports.getOfficeReport = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getOfficeReport(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			console.error(error);
+			throw error;
+		})
+
+});
+
+// *---- LANDLORD FUNCTIONS -----*
+
+exports.getBuildingOfficeReport = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.getBuildingOfficeReport(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			console.error(error);
+			throw error;
+		})
+
+});
+
 // *--------------*
 
 exports.updateServiceRequestStatusFromEmailLink = functions.https.onCall((data, context) => {
@@ -920,6 +944,7 @@ exports.getUserTypeFromEmail = functions.https.onCall((data, context) => {
 		})
 });
 
+
 exports.getUserInfo = functions.https.onCall((data, context) => {
 	const userUID = context.auth.uid;
 	if (userUID === null) {
@@ -954,6 +979,18 @@ exports.getUserInfo = functions.https.onCall((data, context) => {
 			return helperFunctions.getExpandedOfficeData(userOffices, db)
 				.then(officeData => {
 					data.offices = officeData;
+					return data;
+				})
+		})
+		.then(data => {
+			const userBuildings = data.buildingUIDs || null;
+			if ((userBuildings === null) || (userBuildings.length === 0)) {
+				return data
+			}
+			return helperFunctions.getExpandedBuildingData(userBuildings, db)
+				.then(buildingData => {
+					data.buildings = buildingData;
+					data.buildingUIDs = userBuildings;
 					return data;
 				})
 		})
