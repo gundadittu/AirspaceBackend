@@ -124,7 +124,7 @@ exports.getOfficeReport = (data, context, db, airtable) => {
                         // throw new functions.https.HttpsError('not-found', 'officeProfileATID for selectedOfficeUID not found.');
                         console.log("officeProfileATID for selectedOfficeUID not found.");
                     }
-                    return
+                    return 
                 } else {
                     throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
                 }
@@ -133,7 +133,7 @@ exports.getOfficeReport = (data, context, db, airtable) => {
 
     const getReportATID = (res, rej) => {
         if (officeProfileATID === null) {
-            res({});
+            res(null);
             return
         }
 
@@ -151,7 +151,7 @@ exports.getOfficeReport = (data, context, db, airtable) => {
 
     const getReport = (res, rej) => {
         if (officeReportATID === null) {
-            res({});
+            res(null);
             return
         }
 
@@ -163,13 +163,13 @@ exports.getOfficeReport = (data, context, db, airtable) => {
             let fields = record.fields || null;
             fields.uid = selectedOfficeUID;
             officeReport = fields;
-            res();
+            res(null);
         });
     }
 
     const formatReport = (res, rej) => {
         if (officeReport === null) {
-            res({});
+            res(null);
             return
         }
 
@@ -225,7 +225,7 @@ exports.getOfficeReport = (data, context, db, airtable) => {
         }
 
         res(newOfficeReport);
-        
+
         // return
         // } else {
         //     const expManID = expMan[0];
