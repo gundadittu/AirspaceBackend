@@ -2249,7 +2249,7 @@ exports.getStartedFormNew = functions.https.onCall((data, context) => {
 		if (newOfficeUID === null) {
 			throw Error("Could not update office info. newOfficeUID is null.");
 		}
-		return db.collection('offices').doc(newOfficeUID).update({ stripeID: stripeID, buildingUID: newBuildingUID });
+		return db.collection('offices').doc(newOfficeUID).update({ stripeID: stripeID, buildingUID: newBuildingUID, companyUID: newCompanyUID });
 	}
 
 	const submitForm = (resolve, reject) => {
