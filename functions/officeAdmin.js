@@ -966,6 +966,7 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
     const endDate = new Date(data.endDate) || null;
     const description = data.description || null;
     const canceled = data.canceled || null;
+    const address = data.address || null;
 
     if (userUID === null) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -1036,6 +1037,10 @@ exports.editEventsForOfficeAdmin = function (data, context, db) {
 
             if (canceled) {
                 dict['canceled'] = canceled;
+            }
+
+            if (address) {
+                dict['address'] = address;
             }
 
             return db.collection('events').doc(selectedEventUID).update(dict);
