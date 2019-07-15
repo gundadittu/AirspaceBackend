@@ -846,7 +846,7 @@ exports.getOfficeProfileForAdmin = (data, context, db, airtable) => {
 
 exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) => {
     const selectedOfficeUID = data.selectedOfficeUID || null;
-    const newAttachment = data.attachment || null;
+    const newAttachment = data.newAttachment || null;
     const userUID = context.auth.uid || null;
     let officeProfileATID = null;
     let currentAttachments = [];
@@ -877,10 +877,9 @@ exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) =>
     }
 
     const getOfficeProfileAttachments = (resolve, reject) => {
-
         if (officeProfileATID === null) {
             const message = "OfficeProfileATID not found."; 
-            console.error(message)
+            console.error(message);
             reject();
             return
         }
@@ -888,8 +887,8 @@ exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) =>
         airtable('Office Profile').find(officeProfileATID, (err, record) => {
             if (err) {
                 const message = "Issue with airtable request to find office profile."; 
-                console.error(message)
-                reject();
+                console.error(message);
+                reject(message);
                 return
             }
             const fields = record.fields || null;
@@ -904,19 +903,18 @@ exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) =>
     }
 
     const updateOfficeProfile = (resolve, reject) => {
-
         if (currentAttachments === null) {
             const message = "No attachments found"; 
-            console.error(message)
-            reject();
+            console.error(message);
+            reject(message);
             return
         }
 
         airtable('Office Profile').update(officeProfileATID, { "Attachments": currentAttachments }, (err, record) => {
             if (err) {
                 const message = "Issue with airtable request to update office profile."; 
-                console.error(message)
-                reject();
+                console.error(message);
+                reject(message);
                 return
             }
             resolve();
@@ -927,6 +925,11 @@ exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) =>
         .then(() => getOfficeProfileATID())
         .then(() => new Promise((res, rej) => getOfficeProfileAttachments(res, rej)))
         .then(() => new Promise((res, rej) => updateOfficeProfile(res, rej)))
+        .catch( error => { 
+            console.log("error promise");
+            console.error(error.message); 
+            throw error 
+        })
 
 }
 
