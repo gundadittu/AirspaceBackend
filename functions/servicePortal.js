@@ -23,6 +23,7 @@ const checkPermissions = (resolve, reject, db, userUID, selectedOfficeUID) => {
         })
 }
 
+
 // add security permissions 
 exports.getBuildingOfficeReport = (data, context, db, airtable) => {
     const userUID = context.auth.uid || null;
@@ -124,7 +125,7 @@ exports.getOfficeReport = (data, context, db, airtable) => {
                         // throw new functions.https.HttpsError('not-found', 'officeProfileATID for selectedOfficeUID not found.');
                         console.log("officeProfileATID for selectedOfficeUID not found.");
                     }
-                    return 
+                    return
                 } else {
                     throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
                 }
@@ -175,17 +176,17 @@ exports.getOfficeReport = (data, context, db, airtable) => {
 
         let newOfficeReport = {};
 
-        const nextVisitString = officeReport["Next Visit"] || null; 
-        if (nextVisitString !== null) { 
+        const nextVisitString = officeReport["Next Visit"] || null;
+        if (nextVisitString !== null) {
             newOfficeReport["Next Visit"] = officeReport["Next Visit"];
         }
 
         const outIssuesString = officeReport["Outstanding Issues"] || null;
-        if (outIssuesString !== null) { 
+        if (outIssuesString !== null) {
             const outIssues = outIssuesString.split(",");
             newOfficeReport["Outstanding Issues"] = outIssues;
         }
-      
+
 
         const spendingDataString = officeReport["Spending Data"] || null;
         if (spendingDataString !== null) {
@@ -220,8 +221,8 @@ exports.getOfficeReport = (data, context, db, airtable) => {
 
         // const expMan = officeReport["Experience Manager"] || [];
 
-        if ((nextVisitString === null) && (outIssuesString === null) && (spendingDataString === null) && (funFactsString === null)) { 
-            newOfficeReport = null; 
+        if ((nextVisitString === null) && (outIssuesString === null) && (spendingDataString === null) && (funFactsString === null)) {
+            newOfficeReport = null;
         }
 
         res(newOfficeReport);
@@ -843,6 +844,92 @@ exports.getOfficeProfileForAdmin = (data, context, db, airtable) => {
         .then(() => new Promise((res, rej) => getOfficeProfile(res, rej)))
 }
 
+exports.uploadAttachmentOfficeProfileForAdmin = (data, context, db, airtable) => {
+    const selectedOfficeUID = data.selectedOfficeUID || null;
+    const newAttachment = data.attachment || null;
+    const userUID = context.auth.uid || null;
+    let officeProfileATID = null;
+    let currentAttachments = [];
+
+    if ((selectedOfficeUID === null) || (userUID === null) || (newAttachment === null)) {
+        throw new functions.https.HttpsError("invalid-argument", "Must provide selectedOfficeUID and userUID (be logged in) and newAttachment.");
+    }
+
+    const validateUserPermission = (resolve, reject) => checkPermissions(resolve, reject, db, userUID, selectedOfficeUID);
+
+    const getOfficeProfileATID = () => {
+        return db.collection('offices').doc(selectedOfficeUID).get()
+            .then(docRef => {
+                if (docRef.exists) {
+                    const data = docRef.data() || null;
+                    if (data === null) {
+                        throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                    }
+                    officeProfileATID = data.officeProfileATID || null;
+                    if (officeProfileATID === null) {
+                        throw new functions.https.HttpsError('not-found', 'officePlanATID for selectedOfficeUID not found.');
+                    }
+                    return
+                } else {
+                    throw new functions.https.HttpsError('not-found', 'Office obj for selectedOfficeUID not found.');
+                }
+            })
+    }
+
+    const getOfficeProfileAttachments = (resolve, reject) => {
+
+        if (officeProfileATID === null) {
+            const message = "OfficeProfileATID not found."; 
+            console.error(message)
+            reject();
+            return
+        }
+
+        airtable('Office Profile').find(officeProfileATID, (err, record) => {
+            if (err) {
+                const message = "Issue with airtable request to find office profile."; 
+                console.error(message)
+                reject();
+                return
+            }
+            const fields = record.fields || null;
+
+            let attachments = fields["Attachments"] || [];
+            attachments.push(newAttachment);
+
+            currentAttachments = attachments;
+
+            resolve();
+        });
+    }
+
+    const updateOfficeProfile = (resolve, reject) => {
+
+        if (currentAttachments === null) {
+            const message = "No attachments found"; 
+            console.error(message)
+            reject();
+            return
+        }
+
+        airtable('Office Profile').update(officeProfileATID, { "Attachments": currentAttachments }, (err, record) => {
+            if (err) {
+                const message = "Issue with airtable request to update office profile."; 
+                console.error(message)
+                reject();
+                return
+            }
+            resolve();
+        });
+    }
+
+    return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
+        .then(() => getOfficeProfileATID())
+        .then(() => new Promise((res, rej) => getOfficeProfileAttachments(res, rej)))
+        .then(() => new Promise((res, rej) => updateOfficeProfile(res, rej)))
+
+}
+
 exports.updateOfficeProfileForAdmin = (data, context, db, airtable) => {
     const selectedOfficeUID = data.selectedOfficeUID || null;
     const userUID = context.auth.uid || null;
@@ -874,33 +961,6 @@ exports.updateOfficeProfileForAdmin = (data, context, db, airtable) => {
             })
     }
 
-    const getOfficeProfile = (resolve, reject) => {
-        resolve();
-
-        // airtable('Office Profile').find(officeProfileATID, (err, record) => {
-        //     if (err) {
-        //         reject(err);
-        //         return;
-        //     }
-        //     const fields = record.fields || null;
-        //     let att = fields["Attachments"] || [];
-        //     att = att.map( x => { 
-        //         return { 
-        //             url: x.url, 
-        //             filename: x.filename 
-        //         }
-        //     })
-
-        //     const newAtt = changes["Attachments"] || [];
-
-        //     att.push(newAtt);
-
-        //     changes["Attachments"] = att;
-
-        //     resolve();
-        // });
-    }
-
     const updateOfficeProfile = (resolve, reject) => {
 
         airtable('Office Profile').update(officeProfileATID, changes, (err, record) => {
@@ -914,7 +974,6 @@ exports.updateOfficeProfileForAdmin = (data, context, db, airtable) => {
 
     return new Promise((resolve, reject) => validateUserPermission(resolve, reject))
         .then(() => getOfficeProfileATID())
-        .then(() => new Promise((res, rej) => getOfficeProfile(res, rej)))
         .then(() => new Promise((res, rej) => updateOfficeProfile(res, rej)))
 }
 

@@ -616,6 +616,15 @@ exports.updateOfficeProfileForAdmin = functions.https.onCall((data, context) => 
 		});
 })
 
+exports.uploadAttachmentOfficeProfileForAdmin = functions.https.onCall((data, context) => {
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
+	return servicePortalFunctions.uploadAttachmentOfficeProfileForAdmin(data, context, db, base)
+		.catch(error => {
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
 exports.getExperienceManagerInfoForOffice = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getExperienceManagerInfoForOffice(data, context, db, base)
