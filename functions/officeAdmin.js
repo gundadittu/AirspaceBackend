@@ -132,7 +132,7 @@ exports.addUserToOffice = function (data, context, db, admin) {
             }
         })
         .then( (newUserUID) => { 
-            emailHelpersFunctions.triggerUserCreationEmail(newUserUID, db, admin);
+            emailHelpersFunctions.triggerUserCreationEmail(newUserUID, selectedOfficeUID, db, admin);
             return 
         })
         .catch(error => {

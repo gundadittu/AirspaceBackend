@@ -66,9 +66,9 @@ exports.sendRegGuestCreationEmail = (data) => {
   return sgMail.send(msg);
 }
 
-exports.triggerUserCreationEmail = (userUID, db, admin) => {
-  if (userUID === null) {
-    throw new functions.https.HttpsError('invalid-argument', 'Need to provide userUID to trigger welcome email.');
+exports.triggerUserCreationEmail = (userUID, newOfficeUID, db, admin) => {
+  if (userUID === null || newOfficeUID === null) {
+    throw new functions.https.HttpsError('invalid-argument', 'Need to provide userUID and newOfficeUID to trigger welcome email.');
   }
 
   let firstName = null;
@@ -86,14 +86,14 @@ exports.triggerUserCreationEmail = (userUID, db, admin) => {
       if ((firstName === null) && (email === null)) {
         throw new functions.http.HttpsError('not-found', 'Unable to access firstName & email data for new user');
       }
-      const officeUIDs = data.offices || null;
-      return officeUIDs;
+      // const officeUIDs = data.offices || null;
+      return
     })
-    .then((officeUIDs) => {
-      if (officeUIDs === null) {
-        throw new functions.http.HttpsError('not-found', 'Unable to access offices for new user');
-      }
-      const firstOfficeUID = officeUIDs[0] || null;
+    .then(() => {
+      // if (officeUIDs === null) {
+      //   throw new functions.http.HttpsError('not-found', 'Unable to access offices for new user');
+      // }
+      const firstOfficeUID = newOfficeUID
       if (firstOfficeUID === null) {
         throw new functions.http.HttpsError('not-found', 'New user has no offices');
       }
@@ -120,6 +120,7 @@ const sendUserCreationEmail = (data) => {
   // resetPasswordURL
   // userEmail
   // userName
+  // officeName
 
   const recipientEmail = data.userEmail || null;
   if (recipientEmail === null) {

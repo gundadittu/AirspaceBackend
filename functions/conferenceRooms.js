@@ -29,6 +29,8 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
 	}
 
+	console.log(1);
+
 	// check to make sure user can book conference room??
 	return db.collection('users').doc(userUID).get()
 		.then(docRef => {
@@ -81,7 +83,7 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(x => {
-
+			console.log(2);
 			// check that conference room is free at that time and reservable
 			return db.collection('conferenceRoomReservations').where('roomUID', '==', conferenceRoomUID).where('endDate', '>=', startTime).where('canceled', '==', false).get()
 				.then(docSnapshots => {
@@ -100,6 +102,7 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(x => {
+			console.log(3);
 			// create conference room reservation
 			return db.collection('conferenceRoomReservations').add({
 				title: conferenceRoomName,
@@ -132,6 +135,7 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(() => {
+			console.log(4);
 			if (shouldCreateCalendarEvent === false) {
 				console.log("Not creating calendar event.");
 				return
@@ -139,54 +143,54 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 
 			return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
 		})
+		.then(docRef => {
+			console.log(5);
+			if (docRef.exists) {
+				const data = docRef.data();
+				const address = data.address || null;
+				return address
+			}
+			return null
+		})
+		.then(address => {
+			console.log(5);
+			if (userEmail !== null) {
+				attendees.push({ "email": userEmail });
+			}
+
+			for (let key in emailInvites) {
+				let email = emailInvites[key];
+				attendees.push({ "email": email });
+			}
+			console.log(attendees);
+
+			var location = ""
+			if (address !== null) {
+				location = address;
+			}
+
+			// create calendar invite
+			const eventData = {
+				eventName: reservationTitle,
+				description: note,
+				startTime: startTime,
+				endTime: endTime,
+				attendees: attendees,
+				location: location
+			};
+
+			return googleCalendarFunctions.addEventToCalendar(eventData)
+				.then(data => {
+					return data;
+				}).catch(err => {
+					console.error('Error adding event: ' + err.message);
+					throw new functions.https.HttpsError(err);
+				});
+		})
 		.catch(error => {
 			console.error(error);
 			throw error;
 		})
-	// .then( docRef => {
-	// 	if (docRef.exists) {
-	// 		const data = docRef.data();
-	// 		const address = data.address || null;
-	// 		return address
-	// 	}
-	// 	return null
-	// })
-	// 	.then( address => {
-
-	// 		if (userEmail !== null) {
-	// 			attendees.push({"email": userEmail});
-	// 		}
-
-	// 		for (let key in emailInvites) { 
-	// 			let email = emailInvites[key];
-	// 			attendees.push({"email": email});
-	// 		}
-	// 		console.log(attendees);
-
-	// 		var location = ""
-	// 		if (address !== null) {
-	// 			location = address;
-	// 		}
-
-	// 		// create calendar invite
-	// 		const eventData = {
-	// 	        eventName: reservationTitle	,
-	// 	        description: note,
-	// 	        startTime: startTime,
-	// 	        endTime: endTime,
-	// 	        attendees: attendees,
-	// 	        location: location
-	//     	};
-
-	//     	return googleCalendarFunctions.addEventToCalendar(eventData)
-	// 			.then(data => {
-	//         	return data;
-	//     	}).catch(err => {
-	//         	console.error('Error adding event: ' + err.message);
-	//         	throw new functions.https.HttpsError(err);
-	//    		});
-	// 	})
-	// })
 }
 
 exports.getReservationsForConferenceRoom = function (data, context, db) {
