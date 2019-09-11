@@ -1427,7 +1427,7 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
                     if (x.paid === false) {
                         outstanding.push(x);
                     } else if (x.paid === true) {
-                        paid.push(x)
+                        paid.push(x);
                     }
                 });
 
