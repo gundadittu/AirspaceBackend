@@ -29,8 +29,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 		throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
 	}
 
-	console.log(1);
-
 	// check to make sure user can book conference room??
 	return db.collection('users').doc(userUID).get()
 		.then(docRef => {
@@ -83,7 +81,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(x => {
-			console.log(2);
 			// check that conference room is free at that time and reservable
 			return db.collection('conferenceRoomReservations').where('roomUID', '==', conferenceRoomUID).where('endDate', '>=', startTime).where('canceled', '==', false).get()
 				.then(docSnapshots => {
@@ -102,7 +99,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(x => {
-			console.log(3);
 			// create conference room reservation
 			return db.collection('conferenceRoomReservations').add({
 				title: conferenceRoomName,
@@ -135,7 +131,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				})
 		})
 		.then(() => {
-			console.log(4);
 			if (shouldCreateCalendarEvent === false) {
 				console.log("Not creating calendar event.");
 				return
@@ -144,7 +139,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 			return db.collection('conferenceRooms').doc(conferenceRoomUID).get()
 		})
 		.then(docRef => {
-			console.log(5);
 			if (docRef.exists) {
 				const data = docRef.data();
 				const address = data.address || null;
@@ -153,7 +147,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 			return null
 		})
 		.then(address => {
-			console.log(5);
 			if (userEmail !== null) {
 				attendees.push({ "email": userEmail });
 			}
@@ -162,7 +155,6 @@ exports.createConferenceRoomReservation = function (data, context, db) {
 				let email = emailInvites[key];
 				attendees.push({ "email": email });
 			}
-			console.log(attendees);
 
 			var location = ""
 			if (address !== null) {

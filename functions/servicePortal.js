@@ -1423,12 +1423,10 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
                 let outstanding = [];
                 let paid = [];
 
-                // console.log(data);
-
                 data.forEach(x => {
-                    if (x.amount_remaining > 0) {
+                    if (x.paid === false) {
                         outstanding.push(x);
-                    } else if (x.amount_remaining === 0) {
+                    } else if (x.paid === true) {
                         paid.push(x)
                     }
                 });
