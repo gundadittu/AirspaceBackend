@@ -473,18 +473,28 @@ exports.submitSupportTicket = (data, context, db, airtable) => {
 }
 
 exports.addRequestFromPortal = (data, context, db, airtable) => {
-
     const userUID = context.auth.uid || null;
-
     const serviceType = data.serviceType || null;
-    const serviceDescriptionRaw = data.serviceDescription || [];
+    const serviceDescriptionRaw = data.serviceDescription || []; //this is a list of dictionaries with each having a questions & answers
     const onlyInterestedValue = data.onlyInterested || null;
     const onlyInterested = (onlyInterestedValue === true) ? "Interest" : "Request";
     const selectedOfficeUID = data.selectedOfficeUID || null;
 
     const serviceDescription = ((serviceDescriptionRaw.map(x => {
+        if (x.type === "fileUpload") { 
+            return x.question + ": " + (x.response.length > 0 ? "CHECK_ATTACHMENTS_COLUMN" : "NO_ATTACHMENTS")
+        }
         return x.question + ": " + x.response
     }))).join(" |----------| ");
+
+    let attachments = []
+    serviceDescriptionRaw.forEach( x => { 
+        if (x.type === "fileUpload") { 
+            const list = x.response
+            attachments.push(...list)
+        }
+        return 
+    })
 
     let officeAtid = null;
 
@@ -513,6 +523,7 @@ exports.addRequestFromPortal = (data, context, db, airtable) => {
             .create({
                 "Type": serviceType,
                 "Details": serviceDescription,
+                "Attachments": attachments,
                 "Interest or Request": onlyInterested,
                 "Office": [
                     officeAtid
@@ -1310,63 +1321,9 @@ function getPendingPackages(selectedOfficeUID, db, airtable) {
             })
     }
 
-    // const getAllPendingAddOns = (res, rej) => {
-    //     if (allPendingPackages === null) {
-    //         rej(Error("No Pending Packages"));
-    //         return
-    //     }
-
-    //     const topPromises = allPendingPackages.filter((x) => {
-    //         const allOptionsIDs = x["Add-ons"] || null;
-    //         if (allOptionsIDs === null) {
-    //             return false
-    //         }
-    //         return true
-    //     }).map(x => {
-    //         const allOptionsIDs = x["Add-ons"];
-
-    //         let allOptions = [];
-    //         const promises = allOptionsIDs.map(y => {
-    //             return new Promise((res, rej) =>
-    //                 airtable('Pend. Package Add Ons').find(y, (err, record) => {
-    //                     if (err) {
-    //                         console.error(err);
-    //                         res();
-    //                         return;
-    //                     }
-    //                     const fields = record.fields || null;
-    //                     if (fields !== null) {
-    //                         allOptions.push(fields);
-    //                     }
-    //                     res();
-    //                 }));
-    //         });
-
-    //         // eslint-disable-next-line consistent-return
-    //         return Promise.all(promises)
-    //             .then(() => {
-    //                 x["addOns"] = allOptions;
-    //                 return x
-    //             })
-    //     })
-
-    //     // eslint-disable-next-line consistent-return
-    //     return Promise.all(topPromises)
-    //         .then(packages => {
-    //             console.log("finished: " + packages);
-    //             res(packages);
-    //             return
-    //         })
-    //         .catch(error => {
-    //             rej(error);
-    //             return
-    //         })
-    // }
-
     return getATID()
         .then(() => new Promise((res, rej) => getAllPendingPackages(res, rej)))
         .then(() => new Promise((res, rej) => getAllPendingOptions(res, rej)))
-    // .then(() => new Promise((res, rej) => getAllPendingAddOns(res, rej)))
 }
 
 exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
@@ -1451,7 +1408,6 @@ exports.getAllInvoicesForOffice = (data, context, db, stripe) => {
         );
     }
 
-    // console.log(5);
     return new Promise((resolve, reject) => {
         validateUserPermission(resolve, reject);
     }).then(() => getStripeID())
