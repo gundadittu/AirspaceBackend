@@ -528,6 +528,17 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 // 		});
 // });
 
+exports.getFeaturedAdminFeed = functions.https.onCall((data, context) => {
+	// "Featured Services" base
+	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('appstwGksX7xX4s1u');
+	return servicePortalFunctions.getFeaturedAdminFeed(base)
+		.catch(error => {
+			console.error(error);
+			Sentry.captureException(error);
+			throw error;
+		});
+})
+
 exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.acceptServicePlanOption(data, context, db, base)
