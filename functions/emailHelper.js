@@ -1,10 +1,10 @@
 const sgMail = require('@sendgrid/mail');
 const functions = require('firebase-functions');
-// see this url for instructions on how to configure: https://firebase.google.com/docs/functions/config-env
-sgMail.setApiKey(functions.config().sendgrid.key);
+var generalCredentials = require("./deployment-config/general-credentials.json");
 
-const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
+sgMail.setApiKey(generalCredentials["sendgrid"]["api-key"]);
 
+const webAppBaseURL = generalCredentials["webAppBaseURL"]
 
 exports.sendArrivedRegGuestCreationEmail = (data) => {
 

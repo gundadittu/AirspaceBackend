@@ -1,22 +1,25 @@
 'use strict';
 var admin = require("firebase-admin");
-var serviceAccount = require("./deployment-config/credentials.json");
-
+var serviceAccount = require("./deployment-config/firebase-credentials.json");
 var databaseConfig = require("./deployment-config/database.json");
-// const json = JSON.parse(databaseConfig);
-const dbURL = databaseConfig["url"]
+var generalCredentials = require("./deployment-config/general-credentials.json");
+const Sentry = require('@sentry/node');
+var Airtable = require('airtable');
+const stripe = require('stripe')(generalCredentials["stripe"]["secret-key"]);
+const functions = require('firebase-functions');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: dbURL
+  databaseURL: databaseConfig["url"]
 });
 
-const Sentry = require('@sentry/node');
-Sentry.init({ dsn: 'https://8825e624e2594f1d8ca77d056c8b56dd@sentry.io/1395312' });
-var Airtable = require('airtable');
-const stripe = require('stripe')('sk_live_xp58HHXNsSPDi6GPBrB2ozvT005TEJMfpl');
+Sentry.init({ dsn: generalCredentials["sentry"]["dsn"] });
 
-const functions = require('firebase-functions');
+var airtable = new Airtable({ apiKey: generalCredentials["airtable"]["api-key"] })
+var base = airtable.base(generalCredentials["airtable"]["mvp-portal-base"]);
+var officeServiceBase = airtable.base(generalCredentials["airtable"]["office-services-base"])
+
+// Endpoint Sections
 const conferenceRoomFunctions = require('./conferenceRooms');
 const hotDeskFunctions = require('./hotDesks');
 const eventFunctions = require('./events');
@@ -33,10 +36,8 @@ const servicePortalFunctions = require('./servicePortal');
 const alexaFunctions = require('./alexaFunctions');
 
 var db = admin.firestore();
-// const settings = { timestampsInSnapshots: true };
-// db.settings(settings);
 
-const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
+const webAppBaseURL = generalCredentials["webAppBaseURL"]
 
 exports.getUsersReservationsForRange = functions.https.onCall((data, context) => {
 	return reservationFunctions.getUsersReservationsForRange(data, context, db, admin)
@@ -481,7 +482,6 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 // })
 
 exports.addRequestFromAlexa = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.addRequestFromAlexa(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -491,7 +491,6 @@ exports.addRequestFromAlexa = functions.https.onCall((data, context) => {
 });
 
 exports.submitSupportTicket = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.submitSupportTicket(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -523,7 +522,6 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 // *--- SERVICE PORTAL FUNCTIONS ----*
 
 // exports.getPendingPackages = functions.https.onCall((data, context) => {
-// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 // 	return servicePortalFunctions.getPendingPackages(data, context, db, base)
 // 		.catch(error => {
 // 			console.error(error);
@@ -534,8 +532,7 @@ exports.linkAlexa = functions.https.onCall((data, context) => {
 
 exports.getFeaturedAdminFeed = functions.https.onCall((data, context) => {
 	// "Featured Services" base
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('appstwGksX7xX4s1u');
-	return servicePortalFunctions.getFeaturedAdminFeed(base)
+	return servicePortalFunctions.getFeaturedAdminFeed(officeServiceBase)
 		.catch(error => {
 			console.error(error);
 			Sentry.captureException(error);
@@ -544,7 +541,6 @@ exports.getFeaturedAdminFeed = functions.https.onCall((data, context) => {
 })
 
 exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.acceptServicePlanOption(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -554,7 +550,6 @@ exports.acceptServicePlanOption = functions.https.onCall((data, context) => {
 })
 
 exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.pendingServicePlanOption(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -564,7 +559,6 @@ exports.pendingServicePlanOption = functions.https.onCall((data, context) => {
 })
 
 exports.confirmPendingPackage = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.confirmPendingPackage(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -574,7 +568,6 @@ exports.confirmPendingPackage = functions.https.onCall((data, context) => {
 })
 
 exports.rejectPendingPackage = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.rejectPendingPackage(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -584,7 +577,6 @@ exports.rejectPendingPackage = functions.https.onCall((data, context) => {
 })
 
 // exports.acceptServicePlanAddOn = functions.https.onCall((data, context) => {
-// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 // 	return servicePortalFunctions.acceptServicePlanAddOn(data, context, db, base)
 // 		.catch(error => {
 // 			console.error(error);
@@ -594,7 +586,6 @@ exports.rejectPendingPackage = functions.https.onCall((data, context) => {
 // })
 
 // exports.pendingServicePlanAddOn = functions.https.onCall((data, context) => {
-// 	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 // 	return servicePortalFunctions.pendingServicePlanAddOn(data, context, db, base)
 // 		.catch(error => {
 // 			console.error(error);
@@ -604,7 +595,6 @@ exports.rejectPendingPackage = functions.https.onCall((data, context) => {
 // })
 
 exports.addRequestFromPortal = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.addRequestFromPortal(data, context, db, base)
 		.catch(error => {
 			console.error(error);
@@ -614,7 +604,6 @@ exports.addRequestFromPortal = functions.https.onCall((data, context) => {
 });
 
 exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getOfficeProfileForAdmin(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -623,7 +612,6 @@ exports.getOfficeProfileForAdmin = functions.https.onCall((data, context) => {
 })
 
 exports.updateOfficeProfileForAdmin = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.updateOfficeProfileForAdmin(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -632,7 +620,6 @@ exports.updateOfficeProfileForAdmin = functions.https.onCall((data, context) => 
 })
 
 exports.uploadAttachmentOfficeProfileForAdmin = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.uploadAttachmentOfficeProfileForAdmin(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -641,7 +628,6 @@ exports.uploadAttachmentOfficeProfileForAdmin = functions.https.onCall((data, co
 })
 
 exports.getExperienceManagerInfoForOffice = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getExperienceManagerInfoForOffice(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -658,7 +644,6 @@ exports.getAllInvoicesForOffice = functions.https.onCall((data, context) => {
 });
 
 exports.getServicePlanForOffice = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getServicePlanForOffice(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -668,7 +653,6 @@ exports.getServicePlanForOffice = functions.https.onCall((data, context) => {
 });
 
 exports.getOfficeReport = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getOfficeReport(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -681,7 +665,6 @@ exports.getOfficeReport = functions.https.onCall((data, context) => {
 // *---- LANDLORD FUNCTIONS -----*
 
 exports.getBuildingOfficeReport = functions.https.onCall((data, context) => {
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	return servicePortalFunctions.getBuildingOfficeReport(data, context, db, base)
 		.catch(error => {
 			Sentry.captureException(error);
@@ -2069,7 +2052,6 @@ exports.getCurrentUsersOffices = functions.https.onCall((data, context) => {
 
 exports.getStartedForm = functions.https.onCall((data, context) => {
 
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 	const newServicesArray = data.newServices || null;
 	let newServices = "";
 	if (newServicesArray !== null) {
@@ -2114,8 +2096,6 @@ exports.getStartedForm = functions.https.onCall((data, context) => {
 });
 
 exports.getStartedFormNew = functions.https.onCall((data, context) => {
-
-	var base = new Airtable({ apiKey: 'keyz3xvywRem7PtDO' }).base('app3AbmyNz7f8Mkb4');
 
 	const newServicesArray = data.newServices || null;
 	const officeName = (data.companyName || null) + " - " + (data.streetAddr1 || null);
