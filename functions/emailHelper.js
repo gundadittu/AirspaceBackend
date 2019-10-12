@@ -1,5 +1,6 @@
 const sgMail = require('@sendgrid/mail');
 const functions = require('firebase-functions');
+// see this url for instructions on how to configure: https://firebase.google.com/docs/functions/config-env
 sgMail.setApiKey(functions.config().sendgrid.key);
 
 const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
@@ -7,16 +8,16 @@ const webAppBaseURL = 'https://airspace-management-app.firebaseapp.com'
 
 exports.sendArrivedRegGuestCreationEmail = (data) => {
 
-  // Need to provide the below in data: 
+  // Need to provide the below in data:
   // userName
-  // userEmail 
+  // userEmail
   // guestName
   // guestEmail
   // visitingOfficeName
   // visitingOfficeAddress
 
-  const recipientEmail = data.userEmail || null; 
-  if (recipientEmail === null) { 
+  const recipientEmail = data.userEmail || null;
+  if (recipientEmail === null) {
     throw new functions.https.HttpsError('invalid-argument','Did not provide a recipient email.');
   }
 
@@ -36,18 +37,18 @@ exports.sendArrivedRegGuestCreationEmail = (data) => {
 }
 
 exports.sendRegGuestCreationEmail = (data) => {
-  
-  // Need to provide the below in data: 
+
+  // Need to provide the below in data:
   // guestName
   // hostName
-  // visitingOfficeName 
+  // visitingOfficeName
   // visitingOfficeAddress
   // visitingDateTime
   // checkInURL
   // guestEmail
 
-  const recipientEmail = data.guestEmail || null; 
-  if (recipientEmail === null) { 
+  const recipientEmail = data.guestEmail || null;
+  if (recipientEmail === null) {
     throw new functions.https.HttpsError('invalid-argument','Did not provide a recipient email.');
   }
 
@@ -116,7 +117,7 @@ exports.triggerUserCreationEmail = (userUID, newOfficeUID, db, admin) => {
 }
 
 const sendUserCreationEmail = (data) => {
-  // Need to provide the below in data: 
+  // Need to provide the below in data:
   // resetPasswordURL
   // userEmail
   // userName

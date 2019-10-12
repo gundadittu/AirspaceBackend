@@ -1,10 +1,10 @@
 'use strict';
 
 var admin = require("firebase-admin");
-var serviceAccount = require("./serviceAccountKey.json");
+var serviceAccount = require("./airspace-development-app-firebase-adminsdk-wcv1c-80e55cb324.json");
 admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount),
-	storageBucket: "airspace-management-app.appspot.com"
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://airspace-development-app.firebaseio.com"
 });
 
 const Sentry = require('@sentry/node');
@@ -282,7 +282,7 @@ exports.guestSelfCheckIn = functions.https.onCall((data, context) => {
 		});
 });
 
-// *---- OFFICE ADMIN FUNCTIONS ---* 
+// *---- OFFICE ADMIN FUNCTIONS ---*
 
 exports.getAllUsersForOffice = functions.https.onCall((data, context) => {
 	return officeAdminFunctions.getAllUsersForOffice(data, context, db)
@@ -465,11 +465,11 @@ exports.changeRegisteredGuestStatusForOfficeAdmin = functions.https.onCall((data
 // exports.handler = functions.https.onRequest((req, res) => {
 // 	console.log(14);
 
-// 	try { 
-// 		const body = req.body; 
-// 		const response = alexaFunctions.handler(body); 
+// 	try {
+// 		const body = req.body;
+// 		const response = alexaFunctions.handler(body);
 // 		res.status(200).send(response);
-// 	} catch(err) { 
+// 	} catch(err) {
 // 		console.error(err);
 // 		Sentry.captureException(err);
 // 		res.status(400).send(err);
@@ -2407,7 +2407,7 @@ exports.checkValidEmail = functions.https.onCall((data, context) => {
 		.then((userRecord) => {
 			const userUID = userRecord.uid || null;
 			if (userUID === null) {
-				// This will go to the catch clause below and create user 
+				// This will go to the catch clause below and create user
 				return { valid: true }
 			} else {
 				return { valid: false }
@@ -2420,4 +2420,3 @@ exports.checkValidEmail = functions.https.onCall((data, context) => {
 			return { valid: false }
 		})
 })
-
