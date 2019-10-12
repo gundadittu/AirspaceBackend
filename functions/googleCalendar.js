@@ -1,7 +1,7 @@
 const {google} = require('googleapis');
 const calendar = google.calendar('v3');
 const OAuth2 = google.auth.OAuth2;
-const googleCredentials = require('./credentials.json');
+const googleCredentials = require('./google-credentials.json');
 
 const ERROR_RESPONSE = {
 	status: "500",

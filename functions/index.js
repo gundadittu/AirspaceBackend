@@ -1,10 +1,14 @@
 'use strict';
-
 var admin = require("firebase-admin");
-var serviceAccount = require("./airspace-development-app-firebase-adminsdk-wcv1c-80e55cb324.json");
+var serviceAccount = require("./deployment-config/credentials.json");
+
+var databaseConfig = require("./deployment-config/database.json");
+// const json = JSON.parse(databaseConfig);
+const dbURL = databaseConfig["url"]
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://airspace-development-app.firebaseio.com"
+  databaseURL: dbURL
 });
 
 const Sentry = require('@sentry/node');

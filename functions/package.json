@@ -9,6 +9,8 @@
     "serve": "firebase serve --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
+    "prod-setup": "sudo ./deployment-config/scripts/deploy-to-production.sh",
+    "dev-setup": "sudo ./deployment-config/scripts/deploy-to-development.sh",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
